@@ -270,6 +270,31 @@ const FURNITURE_BY_CATEGORY: Record<string, PropKind> = {
   'construction.toilet': 'crate',
   'construction.generator': 'crate',
   rock: 'rock',
+  // —— 废弃地块（`abandonedLot`）
+  // 这一族的"身份"全在 ruins.* 上：112 丛杂草 + 30 堆瓦砾 + 7 段残墙 + 9 处涂鸦。
+  // 残墙原来落进兜底 `crate`，一块废墟就变成"一堆 1.1 m 的方盒子"，读不出这儿曾有楼。
+  'ruins.wall': 'ruinWall',
+  'ruins.rubble': 'rock',
+  'ruins.junk': 'crate',
+  // —— 广场 / 街道家具
+  // `bollard` 直接就是路桩，别再落兜底：市场广场有 162 个，排成列是那个广场的秩序所在。
+  bollard: 'bollard',
+  'commercial.sign': 'sign',
+  'lamp.flood': 'lamp',
+  restroom: 'shelter',
+};
+
+/**
+ * 中心物 `centerpiece` 的资产分类 → 道具。
+ *
+ * 一律画成喷泉的代价：市场广场正中间那尊 `centerpiece.statue` 变成**蓝色水盘**。
+ * 中心物是一块地的视觉焦点，错了比旁边几十棵树错了更刺眼。
+ */
+const CENTERPIECE_BY_CATEGORY: Record<string, PropKind> = {
+  'centerpiece.fountain': 'fountain',
+  'centerpiece.statue': 'statue',
+  /** 没写分类（只有 `centerpiece`）时按喷泉画：这是该角色最常见的一档。 */
+  centerpiece: 'fountain',
 };
 
 /**
@@ -321,6 +346,14 @@ export interface BridgeOptions {
   markings?: boolean;
   /** 标线贴花最多画多少条（护栏），默认 6000。 */
   maxMarkings?: number;
+  /**
+   * 是否把 `zoning` 宗地铺成砾石地面（默认 true）。
+   *
+   * 宗地 = 留给建筑的地，按定义不铺装。不画的话，`stripMall` 这种生成器在场景里
+   * 只剩 30% 的地面有内容，剩下 27% 是一块没来由的草坪 —— 看起来像"规划失败"，
+   * 实际是"那块地等着盖楼"。关掉就回到老行为。
+   */
+  zoning?: boolean;
   /**
    * 地块环（米，Plan 坐标系，同 `caseJson.shape.ring`）。
    *
@@ -490,6 +523,32 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     });
   });
 
+  // 1b) 宗地（zoning）：地是留给建筑的，按定义**不铺装**
+  //
+  // 这条通道以前整类丢掉，代价是"覆盖率看着很低"：stripMall 只铺了 30%，
+  // 剩下 27%（3341 m²）是 `EU Commercial Low` 宗地 —— 在 CS2 里那块地是用来长商铺的，
+  // 地面本来就不铺。丢掉之后整块地读成「草坪 + 角落里一个停车场」，
+  // 而真相是「停车场 + 一排待建商铺的空地」。
+  //
+  // 处理方式：把宗地四边形铺一层砾石，**不铺装材质**。砾石在这里的意思很明确 ——
+  // 场地平整过、等着盖，既不像草坪（以为没规划过）也不像广场（以为已经能用）。
+  // 分组带 zoneId，2D 出图和 DCC 里都能按分区单独选中/统计。
+  // 高度压在铺装之上（core 不会让宗地压在步道上），下面 terraform 顺延。
+  if (opts.zoning !== false) {
+    plan.zoning.forEach((z, i) => {
+      const ring = ringOf(z.quad);
+      if (!ring) { dropped++; return; }
+      const zone = z.zoneId.replace(/[^\w]+/g, '_');
+      surfaces.push({
+        name: `${g}_zone_${i}_${zone}`,
+        group: `${g}/zoning/${zone}`,
+        ring,
+        mat: 'gravel',
+        y: SURFACE_Y0 + (plan.surfaces.length + i) * SURFACE_DY,
+      });
+    });
+  }
+
   // 2) terraform 抬台：只把轮廓铺一层深色，不做高度（TownForge 的地面是平的，
   //    真要抬起来得改 mesh 生成，那是另一件事）
   if (opts.terraform !== false) {
@@ -502,7 +561,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
         group: `${g}/terraform`,
         ring,
         mat: t.kind === 'lower' ? 'water' : 'soil',
-        y: SURFACE_Y0 + (plan.surfaces.length + i) * SURFACE_DY,
+        y: SURFACE_Y0 + (plan.surfaces.length + plan.zoning.length + i) * SURFACE_DY,
       });
     });
   }
@@ -568,6 +627,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     }
     let kind = PROP_BY_OBJECT[o.role];
     if (o.role === 'furniture') kind = FURNITURE_BY_CATEGORY[o.category ?? ''] ?? 'crate';
+    else if (o.role === 'centerpiece') kind = CENTERPIECE_BY_CATEGORY[o.category ?? ''] ?? 'fountain';
     if (!kind) return;
     if (o.role === 'tree') {
       treeSeen++;

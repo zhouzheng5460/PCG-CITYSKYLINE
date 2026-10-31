@@ -51,6 +51,10 @@ export const PROP_STYLE: Record<PropKind, PropStyle> = {
   crate: { r: 0.05, mat: 'metal' },
   barrel: { r: 0.04, mat: 'metal' },
   rock: { r: 0.06, mat: 'gravel' },
+  // 残墙：3.2 m 长的一段，在整城视图里是"一道线"而不是一个点
+  ruinWall: { r: 0, mat: 'wallConcrete', shape: 'bar', len: 0.46, width: 0.06 },
+  // 雕像：基座 2.4 m 见方，2D 里画成实心点（它本来就是广场的中心）
+  statue: { r: 0.18, mat: 'stonePave' },
 };
 
 /** 树类道具（2D 里都画成圆点，统计里都算树）。 */

@@ -22,7 +22,8 @@
     "test:split": "tsx test/split.test.ts",
     "test:clip": "tsx test/clip.test.ts",
     "score": "tsx tools/score-plan.ts",
-    "test:yards": "tsx test/bridge-yards.test.ts"
+    "test:yards": "tsx test/bridge-yards.test.ts",
+    "test:shops": "tsx test/bridge-shops.test.ts"
   },
   "dependencies": {
     "earcut": "^3.2.4",

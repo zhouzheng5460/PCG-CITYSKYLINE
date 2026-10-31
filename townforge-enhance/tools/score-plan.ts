@@ -44,6 +44,8 @@ interface PlanJson {
   nets: { role: string; a: [number, number]; b: [number, number]; c: [number, number]; d: [number, number] }[];
   objects: { role: string }[];
   terraform: { kind: string; ring: [number, number][] }[];
+  /** 宗地：留给建筑的地，不铺装。不单列的话，商铺类生成器的"覆盖率 30%"会被误读成规划失败。 */
+  zoning: { zoneId: string; quad: [number, number][] }[];
   unknownRoles?: { surfaces?: number; nets?: number; objects?: number; areas?: number };
 }
 
@@ -67,6 +69,8 @@ interface Row {
   gen: string;
   lot: number;
   paved: number;
+  /** 宗地并集面积（留给建筑的地）。 */
+  zone: number;
   layers: number;
   cover: number;
   props: number;
@@ -104,6 +108,7 @@ for (const meta of metas) {
     console.warn(`[score] ${meta.name}: 并集计算退化（多边形自交/零宽），铺装面积取的是简单相加，可能偏高`);
   }
   const layers = paved > 0.01 ? pavedSum / paved : 0;
+  const zone = unionArea(plan.zoning.map((z) => z.quad)).area;
   const netLen = plan.nets.reduce((s, n) => s + bezLen(n.a, n.b, n.c, n.d), 0);
   const counts = new Map<string, number>();
   for (const o of plan.objects) counts.set(o.role, (counts.get(o.role) ?? 0) + 1);
@@ -118,6 +123,7 @@ for (const meta of metas) {
     gen: meta.generator,
     lot,
     paved,
+    zone,
     layers,
     cover: paved / lot,
     props: plan.objects.length,
@@ -135,14 +141,14 @@ rows.sort((a, b) => b.cover - a.cover || b.props - a.props);
 const pad = (s: string, n: number) => (s.length >= n ? s : ' '.repeat(n - s.length) + s);
 const padR = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length));
 
-const header = `${padR('方案', 30)} ${padR('gen', 18)} ${pad('地块', 8)} ${pad('铺装', 8)} ${pad('覆盖', 6)} ${pad('层', 4)} ${pad('实体', 6)} ${pad('密度', 7)} ${pad('网线m', 8)} ${pad('楼', 3)}`;
+const header = `${padR('方案', 30)} ${padR('gen', 18)} ${pad('地块', 8)} ${pad('铺装', 8)} ${pad('宗地', 8)} ${pad('覆盖', 6)} ${pad('层', 4)} ${pad('实体', 6)} ${pad('密度', 7)} ${pad('网线m', 8)} ${pad('楼', 3)}`;
 console.log(header);
 console.log('-'.repeat(header.length));
 
 for (const r of rows) {
   const flag = r.unknown > 0 ? ' !!' : '';
   console.log(
-    `${padR(r.name, 30)} ${padR(r.gen, 18)} ${pad(r.lot.toFixed(0), 8)} ${pad(r.paved.toFixed(0), 8)} ` +
+    `${padR(r.name, 30)} ${padR(r.gen, 18)} ${pad(r.lot.toFixed(0), 8)} ${pad(r.paved.toFixed(0), 8)} ${pad(r.zone.toFixed(0), 8)} ` +
     `${pad((r.cover * 100).toFixed(0) + '%', 6)} ${pad(r.layers.toFixed(2), 4)} ${pad(String(r.props), 6)} ${pad(r.density.toFixed(1), 7)} ` +
     `${pad(r.netLen.toFixed(0), 8)} ${pad(String(r.bld), 3)}${flag}`,
   );
@@ -158,9 +164,9 @@ if (rows.some((r) => r.unknown > 0)) {
 }
 
 if (csvPath) {
-  const lines = ['name,generator,lot_m2,paved_union_m2,cover,surface_layers,props,density_per_1000m2,net_len_m,buildings,unknown_roles'];
+  const lines = ['name,generator,lot_m2,paved_union_m2,zoning_union_m2,cover,surface_layers,props,density_per_1000m2,net_len_m,buildings,unknown_roles'];
   for (const r of rows) {
-    lines.push([r.name, r.gen, r.lot.toFixed(0), r.paved.toFixed(1), r.cover.toFixed(4),
+    lines.push([r.name, r.gen, r.lot.toFixed(0), r.paved.toFixed(1), r.zone.toFixed(1), r.cover.toFixed(4),
       r.layers.toFixed(2), r.props, r.density.toFixed(2), r.netLen.toFixed(1), r.bld, r.unknown].join(','));
   }
   writeFileSync(csvPath, lines.join('\n') + '\n');

@@ -92,6 +92,27 @@ const doSplit = flag('split') && !flag('clip');
  */
 const doClip = flag('clip');
 
+/**
+ * 覆盖生成器的设置：`--set subtype=demolished,overgrowth=20`。
+ *
+ * 为什么不写在配方里：Placemaker 的每个生成器都有一堆 subtype/slider，
+ * 默认值往往是最"温"的那一档（`abandonedLot` 默认 `overgrown` = 一块长满草的空地）。
+ * 要验证桥接不是只对默认档有效，就得能换档再烘一份对比。
+ *
+ * 值的解析：`true`/`false` → 布尔，纯数字 → 数字，其余按字符串（即 Choice 的 value）。
+ */
+const settingsOverride: Record<string, unknown> = {};
+for (const pair of (arg('set', '') || '').split(',').map((s) => s.trim()).filter(Boolean)) {
+  const eq = pair.indexOf('=');
+  if (eq <= 0) { console.error(`[bake] --set 用法：k=v,k2=v2（收到 ${pair}）`); process.exit(2); }
+  const key = pair.slice(0, eq).trim();
+  const raw = pair.slice(eq + 1).trim();
+  settingsOverride[key] = raw === 'true' ? true : raw === 'false' ? false
+    : /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : raw;
+}
+/** 文件名后缀，用于同地块同一生成器的多个变体（`--tag demolished`）。 */
+const tagSuffix = (arg('tag', '') || '').trim();
+
 mkdirSync(dataDir, { recursive: true });
 mkdirSync(caseDir, { recursive: true });
 
@@ -174,12 +195,44 @@ const targets = all
 
 const index: Record<string, unknown>[] = [];
 
+/** 本次烘焙里哪些方案是靠"替它放门"才出东西的（写进 meta 与日志）。 */
+const autoEntrances = new Map<string, number>();
+
+/**
+ * 在最长的临街边上放一个出入口。
+ *
+ * 地块环的每一条边都对着一条街（`patch.shape` 的边就是道路中线，可建区按路宽内缩而来），
+ * 所以"最长边"= 最宽的那一侧立面 —— 正门放那儿最不容易被步行走道/后巷判成非法。
+ *
+ * 只给 `at`（环上的点位）不给 `segment`/`t`：Driver 两种写法都收，点位少一层"环索引对不上"的风险
+ * （切碎地块时环是子块的环，和 `streets` 的索引根本不是一回事）。
+ *
+ * `kind` 选 `entrance`：商场族里它是**双向车行门**（`MallEntrances.Ready` 数 `two`），
+ * 市场族里它同样算数（`MarketEntrances.Ready` 只要求任意一个门）。
+ */
+function autoEntranceMarkers(ring: [number, number][]): { kind: string; at: [number, number] }[] {
+  let best = 0;
+  let bestLen = -1;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i];
+    const b = ring[(i + 1) % ring.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len > bestLen) {
+      bestLen = len;
+      best = i;
+    }
+  }
+  const a = ring[best];
+  const b = ring[(best + 1) % ring.length];
+  return [{ kind: 'entrance', at: [round((a[0] + b[0]) / 2), round((a[1] + b[1]) / 2)] }];
+}
+
 // 一个地块 × 一批生成器 = 若干份 Plan。地块几何每个生成器都重算一遍，
 // 因为那只涉及几十个点（`edgeWidthAt` 也是查表），比把状态提前抽出来更不容易出错。
 const jobs = targets.flatMap((t) => gens.map((gen) => ({ t, gen })));
 
 for (const { t, gen } of jobs) {
-  const name = `city${nPatches}-s${seed}-p${t.index}-${gen}`;
+  const name = `city${nPatches}-s${seed}-p${t.index}-${gen}${tagSuffix ? '-' + tagSuffix : ''}`;
 
   // 平移到原点：Placemaker 的坐标从 (0,0) 起算，原点偏多远它不关心，
   // 但 RingT / RingSegment 这些"沿环的参数"在大坐标上会掉精度。
@@ -264,29 +317,59 @@ for (const { t, gen } of jobs) {
       // （`Reason.NeedsEntrance`），不给街会整块拒绝、什么都不出。
       // 子块的形状已经把建筑排除在外，所以不会生成压在楼上的路。
       streets,
+      ...(Object.keys(settingsOverride).length > 0 ? { settings: settingsOverride } : {}),
       ...(obstacles.length > 0 && !doClip ? { obstacles } : {}),
     };
 
     const casePath = join(caseDir, `${name}${suffix}.json`);
     const planPath = join(dataDir, `${name}${suffix}.plan.tmp.json`);
     tmpWritten.push(planPath);
-    writeFileSync(casePath, JSON.stringify(caseJson, null, 1));
 
-    try {
-      const out = execFileSync(dotnet, [dll, '--emit', casePath, planPath], {
-        cwd: coreLib,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-      for (const line of out.split(/\r?\n/)) if (line.trim()) console.log('   ' + line.trim());
-    } catch (e) {
-      const err = e as { stdout?: string; stderr?: string; status?: number };
-      console.error(`   emit 失败（${piece.tag}）`, err.status ?? '', err.stderr ?? '');
-      emitFailed = true;
-      break;
+    /** 跑一次 emit，成功返回 Plan，失败返回 null。 */
+    const emitOnce = (body: unknown): AnyPlan | null => {
+      writeFileSync(casePath, JSON.stringify(body, null, 1));
+      try {
+        const out = execFileSync(dotnet, [dll, '--emit', casePath, planPath], {
+          cwd: coreLib,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        for (const line of out.split(/\r?\n/)) if (line.trim()) console.log('   ' + line.trim());
+      } catch (e) {
+        const err = e as { stdout?: string; stderr?: string; status?: number };
+        console.error(`   emit 失败（${piece.tag}）`, err.status ?? '', err.stderr ?? '');
+        return null;
+      }
+      return JSON.parse(readFileSync(planPath, 'utf8')) as AnyPlan;
+    };
+
+    let plan = emitOnce(caseJson);
+
+    // ── 被拒绝时替它放一个门 ──────────────────────────────────────────
+    // Placemaker 的商场/市场族**不自己找出入口**，源码原话：
+    //   "The player places them on the outline; nothing is suggested and Build waits
+    //    for a way in for cars."
+    // 自动城市里没有人替它放，于是 stripMall / mallPark / marketSquare 整块地什么都不出
+    // （readyKey = …Step.PlaceEntrance|…Reason.NeedsEntrance）。
+    // 处理方式：**只在被拒绝时**补一个，放在最长的临街边上（最像正门的那条），
+    // kind 用停车场族的 "entrance"（双向车行门，商场和市场两边都认）。
+    // 只在失败时补，是为了不动已经 ready 的 25 份输出 —— 它们必须逐位不变。
+    let autoEntrance = 0;
+    if (plan && plan.ready === false && /NeedsEntrance|EntryWithoutExit|ExitWithoutEntry/.test(plan.readyKey ?? '')) {
+      const mk = autoEntranceMarkers(piece.ring);
+      console.log(`   ↓ 缺出入口，补 ${mk.length} 个（${mk[0].kind} @ 最长边中点）`);
+      const retry = emitOnce({ ...caseJson, markers: mk });
+      if (retry && retry.ready !== false && retry.surfaces.length > 0) {
+        plan = retry;
+        autoEntrance = mk.length;
+      } else {
+        plan = retry ?? plan;   // 还是不行就照实记下来，别假装成功
+      }
     }
 
-    collected.push(JSON.parse(readFileSync(planPath, 'utf8')) as AnyPlan);
+    if (!plan) { emitFailed = true; break; }
+    if (autoEntrance > 0) autoEntrances.set(name, autoEntrance);
+    collected.push(plan);
   }
 
   if (emitFailed || collected.length === 0) continue;
@@ -391,6 +474,12 @@ for (const { t, gen } of jobs) {
      * - `clip`：Core 不知情地排满，bake 层再按建筑裁剪（车道保住 22 条）
      */
     ...(doClip ? { clipStrategy: 'clip' as const } : (keep ? { clipStrategy: 'core' as const } : {})),
+    /**
+     * 替它放的门有几个（省略 = 没放）。
+     * 商场/市场族被 Core 以 `NeedsEntrance` 拒过一次，补上门才出的方案 ——
+     * 记下来是为了让读数据的人知道"这块地的门是工具放的，不是规划出来的"。
+     */
+    ...(autoEntrances.has(name) ? { autoEntrance: autoEntrances.get(name) } : {}),
   };
   writeFileSync(join(dataDir, `${name}.meta.json`), JSON.stringify(meta, null, 1));
   index.push(meta);

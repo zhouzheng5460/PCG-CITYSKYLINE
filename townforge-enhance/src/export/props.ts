@@ -165,6 +165,19 @@ export function buildProp(p: PropFeature, baseY = 0.01): Primitive[] {
       out.push(cone(c, r, y0, 0.1 * s, `${p.name}_r`, g, MAT.gravel, 6));
       break;
     }
+    case 'statue': {
+      // 基座 + 人像：两块方盒，24 面。广场中心的焦点物，值得比一个水盘多给几面。
+      out.push(...box(c, 0.34 * s, 0.34 * s, y0, 0.2 * s, rot, `${p.name}_base`, g, MAT.stonePave, MAT.concrete));
+      out.push(...box(c, 0.16 * s, 0.14 * s, y0 + 0.2 * s, 0.4 * s, rot, `${p.name}_fig`, g, MAT.metal));
+      break;
+    }
+    case 'ruinWall': {
+      // 残墙：3.2 × 0.28 × 1.1 m 的一段实墙，12 面。
+      // 不做"断口"这种细节 —— 7 段墙在一整块 12500 m² 的地上，
+      // 影响可读性的是"有墙"这件事本身，不是墙的断面造型。
+      out.push(...box(c, 0.46 * s, 0.04 * s, y0, 0.16 * s, rot, `${p.name}_w`, g, MAT.wallConcrete, MAT.concrete));
+      break;
+    }
     default:
       break;
   }
