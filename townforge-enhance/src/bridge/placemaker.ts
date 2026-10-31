@@ -125,6 +125,11 @@ export interface PlacemakerPlan {
   settings?: Record<string, unknown>;
   error?: string;
   empty?: string;
+  /**
+   * Driver 统计的「角色名没映射上」的元素数（按通道分开）。
+   * Core 加了新枚举值而 Driver/桥接没跟上时，这些元素会被静默丢掉——读到非零就该报警。
+   */
+  unknownRoles?: { surfaces?: number; nets?: number; objects?: number; areas?: number };
   surfaces: PlanSurface[];
   nets: PlanNet[];
   objects: PlanObject[];
@@ -255,6 +260,33 @@ export interface BridgeResult {
 
 // ─────────────────────────────────────────────────────────── 主函数
 
+/**
+ * 角色名对不上时的报警。**只有真丢了东西才说话**，正常路径一句多余输出都没有。
+ *
+ * 两个来源：
+ * - `plan.unknownRoles`：Driver 侧 RoleName 落到兜底 "other" 的计数（Core 新枚举值）。
+ * - `extra`：桥接映射表里根本没有的 role（JSON 比代码新）。
+ */
+function warnUnknownRoles(plan: PlacemakerPlan, extra: Map<string, number>): void {
+  const u = plan.unknownRoles;
+  const nSurf = u?.surfaces ?? 0;
+  const nNet = u?.nets ?? 0;
+  const nObj = u?.objects ?? 0;
+  const nArea = u?.areas ?? 0;
+  const fromDriver = nSurf + nNet + nObj + nArea;
+  if (fromDriver > 0) {
+    console.warn(
+      `[bridge] ${plan.generator}: Driver 报告 ${fromDriver} 个角色名未映射的元素` +
+        `（surf ${nSurf} / net ${nNet} / obj ${nObj} / area ${nArea}），它们不会出现在场景里。` +
+        `若 Core 新增了角色，需同步 Emit.cs 的 RoleName 与本文件的映射表。`,
+    );
+  }
+  if (extra.size > 0) {
+    const list = [...extra.entries()].map(([r, n]) => `${r}×${n}`).join('、');
+    console.warn(`[bridge] ${plan.generator}: plan.objects 里有映射表不认识的角色（${list}），已丢弃。`);
+  }
+}
+
 export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeResult {
   const sc = opts.scale ?? 1;
   const g = opts.group ?? 'pm';
@@ -266,6 +298,8 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
   const props: PropFeature[] = [];
   const paths: PathFeature[] = [];
   let dropped = 0;
+  /** plan.objects 里出现、但映射表不认识的 role → 个数。收完在结尾统一报一次。 */
+  const unknownObjRoles = new Map<string, number>();
 
   /** 折算出世界单位的环；点数不足或退化返回 null。 */
   const ringOf = (pts: PlanPoint[] | undefined): Pt[] | null => {
@@ -389,6 +423,12 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
 
   plan.objects.forEach((o, i) => {
     if (absorbed.has(i)) return;
+    // 映射表里根本没有这个 role —— 不是"故意不画"（那种是映射成 null），
+    // 而是数据比代码新（Core 加了角色，桥接没跟上）。别静默吞掉，记下来结尾报。
+    if (!(o.role in PROP_BY_OBJECT)) {
+      unknownObjRoles.set(o.role, (unknownObjRoles.get(o.role) ?? 0) + 1);
+      return;
+    }
     let kind = PROP_BY_OBJECT[o.role];
     if (!kind) return;
     if (o.role === 'tree') {
@@ -443,6 +483,8 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     // 超过护栏就整批不画：宁可没有车位线，也不要一座 5000 面的"线城"
     dropped += lines;
   }
+
+  warnUnknownRoles(plan, unknownObjRoles);
 
   return {
     surfaces,

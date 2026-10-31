@@ -16,7 +16,12 @@
     "sheet": "tsx tools/contact-sheet.ts",
     "inspect:pm": "tsx tools/inspect-pm.ts",
     "plan:svg": "tsx tools/plan-svg.ts",
-    "test:obstacles": "tsx test/bridge-obstacles.test.ts"
+    "test:obstacles": "tsx test/bridge-obstacles.test.ts",
+    "test:roles": "tsx test/unknown-role.test.ts",
+    "test:area": "tsx test/area.test.ts",
+    "test:split": "tsx test/split.test.ts",
+    "test:clip": "tsx test/clip.test.ts",
+    "score": "tsx tools/score-plan.ts"
   },
   "dependencies": {
     "earcut": "^3.2.4",

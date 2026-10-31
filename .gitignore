@@ -40,3 +40,6 @@ TownGeneratorOS-master/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 烘焙中间产物（逐块 emit 的临时文件）
+*.plan.tmp.json

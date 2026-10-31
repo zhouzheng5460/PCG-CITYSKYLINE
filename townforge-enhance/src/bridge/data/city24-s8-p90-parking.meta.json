@@ -127,5 +127,6 @@
  ],
  "keepBuildings": true,
  "obstacles": 11,
- "buildings": 4
+ "buildings": 4,
+ "clipStrategy": "clip"
 }

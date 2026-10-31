@@ -41,6 +41,12 @@ namespace Placemaker.Driver
         public int Obs;
         /// <summary>SiteSafety 的统计：压在地界内的建筑数、被裁开的环、被整条丢弃的条目。</summary>
         public int BldInArea, SafetyCut, SafetyDrop, SafetyObj, SafetySurf;
+        /// <summary>
+        /// RoleName 落到兜底 "other" 的次数，按通道分开记。
+        /// Core 新加一个枚举值而这里没跟上时，消费方会静默丢掉该元素——所以这个数必须能被看见。
+        /// </summary>
+        public int UnkSurf, UnkNet, UnkObj, UnkArea;
+        public int UnkTotal => UnkSurf + UnkNet + UnkObj + UnkArea;
         public int Err, Warn;
         public long Ms;
         public string Error = "";
@@ -155,7 +161,12 @@ namespace Placemaker.Driver
                               (rep.Obs > 0 ? " obs=" + rep.Obs : "") +
                               // 注意这里是**障碍块数**，不是栋数：多角楼会拆成好几块，Core 只按质心 4 m 去重
                               (rep.Obs > 0 ? "  避让: 压界 " + rep.BldInArea + " 块, 丢 " + rep.SafetyDrop + " 条 / 裁 " + rep.SafetyCut + " 环" : "") +
+                              (rep.UnkTotal > 0 ? "  !! 未知角色 surf=" + rep.UnkSurf + " net=" + rep.UnkNet + " obj=" + rep.UnkObj + " area=" + rep.UnkArea : "") +
                               "  " + rep.Ms + "ms" + (rep.Error.Length > 0 ? "  ERROR " + rep.Error : ""));
+            if (rep.UnkTotal > 0)
+                Console.Error.WriteLine("[emit] 警告: " + rep.Generator + " 产出 " + rep.UnkTotal +
+                                        " 个角色名未映射的元素（Core 加了新枚举值而 Driver 没跟上）。" +
+                                        "消费方会丢弃它们，请补 RoleName/_ => \"other\" 的对端处理。");
             Console.WriteLine("[out] " + Path.GetFullPath(outPath));
             return rep.Error.Length > 0 ? 1 : 0;
         }
@@ -431,6 +442,15 @@ namespace Placemaker.Driver
                 for (int i = 0; i < r.Length; i++) { if (i > 0) sb.Append(','); Vec3(r[i]); }
                 sb.Append(']');
             }
+            // 未知角色计数：写进 plan JSON，让消费方不用猜"为什么少了几个元素"
+            void UnknownRoles()
+            {
+                Key("unknownRoles"); sb.Append("{\"surfaces\":").Append(rep.UnkSurf)
+                    .Append(",\"nets\":").Append(rep.UnkNet)
+                    .Append(",\"objects\":").Append(rep.UnkObj)
+                    .Append(",\"areas\":").Append(rep.UnkArea).Append('}');
+                Raw(",");
+            }
 
             sb.Append('{');
             Key("protocol"); Str2("placemaker-plan/1"); Raw(",");
@@ -458,6 +478,7 @@ namespace Placemaker.Driver
                 Key("zoning"); Raw("[]"); Raw(",");
                 Key("paint"); Raw("[]"); Raw(",");
                 Key("terraform"); Raw("[]"); Raw(",");
+                UnknownRoles();
                 Key("stats"); Raw("[]"); Raw(",");
                 Key("facts"); Raw("{}"); Raw(",");
                 Key("issues"); Raw("[]");
@@ -471,7 +492,9 @@ namespace Placemaker.Driver
             {
                 var s = plan.Surfaces[i];
                 if (i > 0) Raw(",");
-                Raw("{\"role\":"); Str2(RoleName(s.Role));
+                var rn = RoleName(s.Role);
+                if (rn == "other") rep.UnkSurf++;
+                Raw("{\"role\":"); Str2(rn);
                 Raw(",\"y\":"); Num2(R3(s.Ring.Length > 0 ? s.Ring[0].y : 0f));
                 Raw(",\"ring\":"); Ring(s.Ring);
                 if (!string.IsNullOrEmpty(s.Category)) { Raw(",\"category\":"); Str2(s.Category); }
@@ -486,7 +509,9 @@ namespace Placemaker.Driver
             {
                 var n = plan.Nets[i];
                 if (i > 0) Raw(",");
-                Raw("{\"role\":"); Str2(RoleName(n.Role));
+                var rn = RoleName(n.Role);
+                if (rn == "other") rep.UnkNet++;
+                Raw("{\"role\":"); Str2(rn);
                 Raw(",\"a\":"); Vec3(n.A);
                 Raw(",\"b\":"); Vec3(n.B);
                 Raw(",\"c\":"); Vec3(n.C);
@@ -505,7 +530,9 @@ namespace Placemaker.Driver
             {
                 var o = plan.Objects[i];
                 if (i > 0) Raw(",");
-                Raw("{\"role\":"); Str2(RoleName(o.Role));
+                var rn = RoleName(o.Role);
+                if (rn == "other") rep.UnkObj++;
+                Raw("{\"role\":"); Str2(rn);
                 Raw(",\"x\":"); Num2(R3(o.Position.x));
                 Raw(",\"z\":"); Num2(R3(o.Position.z));
                 if (Math.Abs(o.Position.y) > 1e-4) { Raw(",\"y\":"); Num2(R3(o.Position.y)); }
@@ -525,7 +552,9 @@ namespace Placemaker.Driver
             {
                 var a = plan.Areas[i];
                 if (i > 0) Raw(",");
-                Raw("{\"role\":"); Str2(RoleName(a.Role));
+                var rn = RoleName(a.Role);
+                if (rn == "other") rep.UnkArea++;
+                Raw("{\"role\":"); Str2(rn);
                 Raw(",\"ring\":"); Ring(a.Ring); Raw("}");
             }
             Raw("]"); Raw(",");
@@ -586,6 +615,8 @@ namespace Placemaker.Driver
             }
             Raw("]"); Raw(",");
             rep.Terr = plan.Terraform.Count;
+
+            UnknownRoles();
 
             // ---- stats / facts / issues
             Key("stats"); Raw("[");
@@ -684,7 +715,9 @@ namespace Placemaker.Driver
             SurfaceRole.Plaza => "plaza",
             SurfaceRole.Water => "water",
             SurfaceRole.Decorative => "decorative",
-            _ => "ground",
+            // 兜底必须写 "other" 而不是某个合法值：否则新角色会冒充 ground/grass 混过去，
+            // 消费方既认不出、也不会报警（7 个枚举已全列，这里当前不可达）。
+            _ => "other",
         };
 
         private static string RoleName(NetRole r) => r switch
@@ -731,7 +764,7 @@ namespace Placemaker.Driver
             AreaRole.PedestrianArea => "pedestrian",
             AreaRole.Hangaround => "hangaround",
             AreaRole.Lot => "lot",
-            _ => "lot",
+            _ => "other",
         };
 
         // ---------------------------------------------------------------- 小工具
