@@ -146,6 +146,25 @@ export function buildProp(p: PropFeature, baseY = 0.01): Primitive[] {
       }
       break;
     }
+    case 'crate': {
+      // 堆场杂物（集装箱、托盘、料箱、废料堆）：一个 1.1 × 1.1 × 0.9 m 的扁方盒，12 面。
+      // 不按分类换材质是有意的 —— `PropFeature` 里没有材质字段，为它开一条通道不值得；
+      // 灰盒子在堆场里本来就读成"一垛货"，比 809 张长椅接近真相。
+      out.push(...box(c, 0.16 * s, 0.16 * s, y0, 0.13 * s, rot, `${p.name}_c`, g, MAT.wallPanel, MAT.metal));
+      break;
+    }
+    case 'barrel': {
+      // 油桶 / 轮胎堆：0.32 m 半径、1 m 高的矮圆柱，5 边够圆
+      out.push(cylinder(c, 0.045 * s, y0, 0.14 * s, `${p.name}_d`, g, MAT.metal, 5));
+      break;
+    }
+    case 'rock': {
+      // 石堆 / 瓦砾：一个 6 边的矮锥（1.8 m 直径、0.7 m 高），比盒子更像自然料堆。
+      // 半径按 seed 抖一点，一片石头才不会像网格。
+      const r = 0.13 * s * (0.85 + ((p.seed % 7) / 7) * 0.3);
+      out.push(cone(c, r, y0, 0.1 * s, `${p.name}_r`, g, MAT.gravel, 6));
+      break;
+    }
     default:
       break;
   }

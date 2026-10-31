@@ -53,6 +53,9 @@ function ok(cond: boolean, label: string, detail = '') {
   fails.push(`${label}${detail ? ' — ' + detail : ''}`);
 }
 
+/** 允许作为地块底色的材质（paint 通道能把草地刷成泥土/沙，见 bridge/placemaker.ts）。 */
+const GROUND_MATS = ['grass', 'soil', 'gravel', 'grassDark'];
+
 function isSimple(ring: Pt[]): boolean {
   const n = ring.length;
   if (n < 3) return false;
@@ -96,7 +99,9 @@ for (const meta of metas) {
   // ── 草地底 ────────────────────────────────────────────────
   const base = res.surfaces[0];
   ok(base?.group === 'pm/surface/ground', `[${g}] 第一层是草地底`, String(base?.group));
-  ok(base?.mat === 'grass', `[${g}] 草地底材质是草`, String(base?.mat));
+  // 底色可以是草，也可以是 paint 通道指定的大面积地表（堆场刷了泥土 → soil）。
+  // 这里钉住的是"它有且只有一个底色"，不是"必须是草"。
+  ok(GROUND_MATS.includes(base?.mat), `[${g}] 底色是草或泥土/沙`, String(base?.mat));
   const baseArea = Math.abs(area2(base.ring)) * UNIT_M * UNIT_M;
   ok(Math.abs(baseArea - plan.area) <= plan.area * 0.01,
     `[${g}] 草地面积 = 地块面积`, `${baseArea.toFixed(0)} vs ${plan.area.toFixed(0)} m²`);

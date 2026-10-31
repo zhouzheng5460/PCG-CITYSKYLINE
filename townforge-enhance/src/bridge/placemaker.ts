@@ -86,6 +86,14 @@ export interface PlanObject {
   elevation?: number;
   roll?: number;
   pitch?: number;
+  /**
+   * 资产分类（`AssetCategories`），Driver 直接抄过来的字符串。
+   *
+   * **不能不看**：`furniture` 是通用角色 —— 700 件堆场杂物和公园里的一张野餐桌都是它；
+   * `decal` 里既有 1.5 m 的球场白线，也有 68 m 的整场贴花。只有分类能区分。
+   * Core 那边 `RoleCategories.ForObject` 对通用角色是**强制**要分类的，所以这个字段基本都在。
+   */
+  category?: string;
 }
 
 export interface PlanRegion {
@@ -181,7 +189,7 @@ const NET_SPEC: Record<PlanNetRole, [number, MatKey, number]> = {
   other: [3, 'concrete', 0],
 };
 
-/** 对象角色 → TownForge 的 PropKind。null = 不画（贴花由地形贴图负责，点标记没有几何意义）。 */
+/** 对象角色 → TownForge 的 PropKind。null = 不画（贴花走标线通道，点标记没有几何意义）。 */
 const PROP_BY_OBJECT: Record<PlanObjectRole, PropKind | null> = {
   tree: 'treeRound',
   // 灌木必须是 `shrub`（1.3 m 高的一丛），不能是 `treeSmall`（4.3 m 的小树）：
@@ -192,9 +200,12 @@ const PROP_BY_OBJECT: Record<PlanObjectRole, PropKind | null> = {
   lamp: 'lamp',
   bin: 'bin',
   centerpiece: 'fountain',
-  furniture: 'bench',
+  // `furniture` 是通用角色，真正的造型在下面的分类表里；这里只是"分类也没写"时的兜底。
+  // 兜底选盒子而不是长椅：长椅是最容易被误读的一种（一堆工业废料变成一排长椅），
+  // 一个灰盒子至少读成"一垛东西"，错得没那么显眼。
+  furniture: 'crate',
   fencePiece: 'bollard',
-  decal: null,
+  decal: null,            // 走 markings 通道（见 DECAL_MARKING）
   parkingBay: null,       // 单独走 baysToMarkings
   charger: 'bollard',
   arrow: null,
@@ -204,6 +215,79 @@ const PROP_BY_OBJECT: Record<PlanObjectRole, PropKind | null> = {
   culDeSacCap: null,
   roundaboutIsland: null,
   other: null,
+};
+
+/**
+ * 通用角色 `furniture` 的资产分类 → 道具。
+ *
+ * 为什么必须做这张表：Placemaker 把"任何带资产的杂项"都叫 `furniture`，
+ * 20 个已烘方案里它出现了 25 种分类、2500 多件。原来一律映射成长椅，于是
+ * 自然保护区长出 314 张长椅（那是 `rock` 石块）、车场里 809 张（那是护栏和废车）。
+ *
+ * 键就是 Core 的 `AssetCategories` 字符串。缺席的分类走兜底 `crate` ——
+ * 新分类出来时画面会多一个灰盒子，而不是多一排长椅，也不会静默消失。
+ */
+const FURNITURE_BY_CATEGORY: Record<string, PropKind> = {
+  // —— 绿地 / 公园 / 营地
+  picnic: 'bench',
+  'seating.cafe': 'bench',
+  bench: 'bench',
+  bin: 'bin',
+  'dog.amenity': 'bin',
+  'garden.crop': 'planter',      // 菜畦/花圃 = 抬起来的一格土，正是 planter
+  flowerbed: 'planter',
+  'garden.shed': 'shelter',
+  'garden.glasshouse': 'shelter',
+  shelter: 'shelter',
+  kiosk: 'shelter',
+  'kiosk.stall': 'shelter',
+  stage: 'shelter',
+  'camping.pitch': 'shelter',    // 帐篷：读成一个小棚子，比一张长椅接近
+  'camping.fire': 'rock',        // 火塘：一圈石头
+  'sign.noticeboard': 'sign',
+  'trail.sign': 'sign',
+  'transport.bikeRack': 'bollard',
+  'sports.goal': 'bollard',      // 球门：只有两根柱子是认得出的，横梁留给以后
+  'sports.stand': 'crate',       // 看台：一个台块
+  'dog.agility': 'crate',
+  // —— 堆场 / 工业 / 施工
+  'industrial.wreck': 'car',     // 报废车：TownForge 本来就有 `car`
+  'industrial.barrel': 'barrel',
+  'industrial.tire': 'barrel',   // 轮胎堆：矮圆柱
+  'industrial.container': 'crate',
+  'industrial.pallet': 'crate',
+  'industrial.skip': 'crate',
+  'industrial.scrap': 'crate',
+  'industrial.garbage': 'crate',
+  'industrial.bale': 'crate',
+  'industrial.barrier': 'crate', // 水泥隔离墩：矮方盒
+  'industrial.machine': 'crate',
+  'industrial.cabin': 'crate',
+  'industrial.pile': 'rock',
+  'industrial.vent': 'bollard',
+  'construction.rubble': 'rock',
+  'construction.material': 'crate',
+  'construction.toilet': 'crate',
+  'construction.generator': 'crate',
+  rock: 'rock',
+};
+
+/**
+ * 贴花分类 → 标线尺寸（米）。
+ *
+ * 贴花在 Plan 里只有"点位 + 朝向"，尺寸在资产网格里、离线拿不到。所以只能按分类给：
+ * - `decal.fieldline`：球场白线。Core 沿线**每隔 `lineSpacing`（默认 1.5 m）放一件**，
+ *   所以按一小段窄条画。段长取 1.7 m 而不是 1.5 m：实测相邻两件正好相距 1.50 m，
+ *   按 1.5 画就是"首尾对接"，接缝在细线上会看成一串虚线（渲染器按像素光栅化，
+ *   对接处两边都只覆盖半个像素）。多出的 0.2 m 让它们轻微重叠 —— 同色同高，看不出叠。
+ * - `decal.markings`：整块半场贴花（68 m × 52.5 m 的足球半场纹理）。**不能画成实心面**
+ *   （贴花自带透明，铺实心就是一块白板），只画外框：两半拼起来正好得到球场轮廓 + 中线。
+ * - 其余分类（落叶 / 裂纹 / 水渍 / 垃圾）是地形贴图性质，没有几何可言，不画。
+ */
+const DECAL_MARKING: Record<string, { len: number; w: number }> = {
+  'decal.fieldline': { len: 1.7, w: 0.14 },
+  'parking.decal': { len: 1.7, w: 0.14 },
+  'decal.markings': { len: 68, w: 52.5 },
 };
 
 // ─────────────────────────────────────────────────────────── 选项与结果
@@ -231,6 +315,13 @@ export interface BridgeOptions {
   /** 最多画多少条车位分隔线（护栏，防止一个巨型停车场把面数打爆）。默认 4000。 */
   maxBayLines?: number;
   /**
+   * 是否画标线类贴花（球场白线、整场贴花外框），默认 true。
+   * 关掉就是老行为：球场上只剩草皮和球门，一条线都没有。
+   */
+  markings?: boolean;
+  /** 标线贴花最多画多少条（护栏），默认 6000。 */
+  maxMarkings?: number;
+  /**
    * 地块环（米，Plan 坐标系，同 `caseJson.shape.ring`）。
    *
    * 给了就在最底层铺一层草地。**这不是可选的装饰**：Placemaker 里地面是地形，
@@ -254,6 +345,11 @@ export interface BridgeResult {
   dropped: number;
   /** 车位重塑的统计，给控制台/测试断言用。 */
   bays: { total: number; rows: number; lines: number };
+  /**
+   * 贴花 → 标线的统计：
+   * `strips` 白线条数、`frames` 整场贴花外框个数、`skipped` 非标线贴花（落叶/裂纹/水渍）个数。
+   */
+  markings: { strips: number; frames: number; skipped: number };
   /** 本次桥接用到的生成器 id 与种子，便于复现。 */
   meta: { generator: string; seed: number; area: number; ready: boolean };
 }
@@ -285,6 +381,47 @@ function warnUnknownRoles(plan: PlacemakerPlan, extra: Map<string, number>): voi
     const list = [...extra.entries()].map(([r, n]) => `${r}×${n}`).join('、');
     console.warn(`[bridge] ${plan.generator}: plan.objects 里有映射表不认识的角色（${list}），已丢弃。`);
   }
+}
+
+/**
+ * 地面底色：给 `paint` 通道一个最小的落地方式。
+ *
+ * `paint` 是 CS2 的"刷地表材质"：1 干草 / 2 林地 / 3 泥土 / 4 沙，`strength` 是覆盖强度。
+ * 它不是几何，是一张 splat 权重图 —— 照原样画成实心面会得到一块纯色板，
+ * 而且 200 多块叠在一起必然 z-fighting。所以这里只取**一条**信息：
+ * 「整块地大面积的底色是什么」，用它决定最底层地面（本来固定是草地）的材质。
+ *
+ * 收益很直接：`carYard` / `junkYard` 的铺装只占 21%，剩下 79% 原来是一片草坪 ——
+ * 而 Core 明确把这 79% 刷成了泥土（layer 3 @ 0.85，覆盖整个地块）。改成土地之后
+ * 才读得出"这是一个堆场"，而且**一个面都不多**。
+ */
+function groundMatFromPaint(plan: PlacemakerPlan): MatKey | null {
+  const total = plan.area > 0 ? plan.area : 0;
+  if (total <= 0 || plan.paint.length === 0) return null;
+  let best: { layer: number; area: number } | null = null;
+  for (const q of plan.paint) {
+    if ((q.strength ?? 1) < 0.8) continue;            // 轻轻刷一层的是细节，不改底色
+    const a = Math.abs(polyArea(q.ring));
+    if (a < total * 0.2) continue;                    // 小于地块 20% 的算补丁
+    if (!best || a > best.area) best = { layer: q.layer, area: a };
+  }
+  if (!best) return null;
+  switch (best.layer) {
+    case 3: return 'soil';        // 泥土
+    case 4: return 'gravel';      // 沙
+    case 2: return 'grassDark';   // 林地地表（比草地深一档）
+    case 1: return 'grassDark';   // 干草：偏灰绿，用深草近似
+    default: return null;         // 0 = 擦除
+  }
+}
+
+function polyArea(ring: PlanPoint[]): number {
+  let s = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    s += a[0] * b[1] - b[0] * a[1];
+  }
+  return s / 2;
 }
 
 export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeResult {
@@ -332,7 +469,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
         name: `${g}_ground`,
         group: `${g}/surface/ground`,
         ring,
-        mat: opts.groundMat ?? 'grass',
+        mat: opts.groundMat ?? groundMatFromPaint(plan) ?? 'grass',
         y: SURFACE_Y0 - SURFACE_DY,
       });
     } else {
@@ -430,6 +567,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
       return;
     }
     let kind = PROP_BY_OBJECT[o.role];
+    if (o.role === 'furniture') kind = FURNITURE_BY_CATEGORY[o.category ?? ''] ?? 'crate';
     if (!kind) return;
     if (o.role === 'tree') {
       treeSeen++;
@@ -447,7 +585,49 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     });
   });
 
-  // 5) 车位：点 → 分隔线
+  // 5) 贴花 → 标线
+  //
+  // Placemaker 的标线不是"线"，是沿线撒的一串贴花（间距 `lineSpacing`，默认 1.5 m）。
+  // 不处理的话，一块足球场在场景里只有草皮和四个灯杆 —— 线全没了，读不出是什么场地。
+  // 这里按分类把点位重新摊成窄条（尺寸口径见 DECAL_MARKING 的头注释）。
+  const markings = { strips: 0, frames: 0, skipped: 0 };
+  const markCap = opts.maxMarkings ?? 6000;
+  if (opts.markings !== false) {
+    /** 一条标线：中点到中点，宽 0.14 m，和车位线同高同材质。 */
+    const pushStrip = (a: Pt, b: Pt): boolean => {
+      const ring = bayLineRing(a, b, (0.14 / UNIT_M) * sc / 2);
+      if (!ring) { dropped++; return false; }
+      surfaces.push({ name: `${g}_mark_${surfaces.length}`, group: `${g}/marking/field`, ring, mat: 'markWhite', y: BAY_LINE_Y });
+      return true;
+    };
+    const ext = (c: Pt, ux: number, uy: number, l: number, w: number) => new Pt(c.x + ux * l + uy * w, c.y + uy * l - ux * w);
+
+    for (const o of plan.objects) {
+      if (o.role !== 'decal') continue;
+      const spec = DECAL_MARKING[o.category ?? ''];
+      if (!spec) { markings.skipped++; continue; }
+      if (markings.strips + markings.frames * 4 >= markCap) { markings.skipped++; continue; }
+
+      const c = toPt([o.x, o.z]);
+      const rot = yawToRot(o.yaw ?? 0);
+      const ux = Math.cos(rot), uy = Math.sin(rot);
+      const hl = (spec.len / UNIT_M) * sc / 2;   // 沿 rot 的半长
+      const hw = (spec.w / UNIT_M) * sc / 2;     // 垂直 rot 的半宽
+
+      if (spec.w > 1) {
+        // 整块贴花：只画外框（4 条）。贴花纹理自带透明，铺成实心面就是一块白板。
+        pushStrip(ext(c, ux, uy, -hl, hw), ext(c, ux, uy, hl, hw));
+        pushStrip(ext(c, ux, uy, -hl, -hw), ext(c, ux, uy, hl, -hw));
+        pushStrip(ext(c, ux, uy, -hl, -hw), ext(c, ux, uy, -hl, hw));
+        pushStrip(ext(c, ux, uy, hl, -hw), ext(c, ux, uy, hl, hw));
+        markings.frames++;                        // `frames` 是贴花件数，不是条数
+      } else if (pushStrip(ext(c, ux, uy, -hl, 0), ext(c, ux, uy, hl, 0))) {
+        markings.strips++;                        // `strips` 只数白线条数
+      }
+    }
+  }
+
+  // 6) 车位：点 → 分隔线
   const bayRows = opts.bayLines === false ? [] : baysToMarkings(plan.objects, { k, origin: opts.origin });
   const lines = bayRows.reduce((s, r) => s + r.lines.length + r.fronts.length, 0);
   const cap = opts.maxBayLines ?? 4000;
@@ -492,6 +672,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     paths,
     dropped,
     bays: { total: countBays(plan.objects), rows: bayRows.length, lines: Math.min(lines, cap) },
+    markings,
     meta: {
       generator: plan.generator,
       seed: plan.seed,

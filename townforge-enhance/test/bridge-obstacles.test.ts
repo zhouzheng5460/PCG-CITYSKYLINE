@@ -140,7 +140,23 @@ for (const meta of keepMetas) {
   const plan = JSON.parse(readFileSync(join(dataDir, `${meta.name}.plan.json`), 'utf8')) as {
     surfaces: { ring: [number, number][] }[];
     objects: { x: number; z: number; role: string }[];
+    paint?: { layer: number; strength: number; ring: [number, number][] }[];
   };
+
+  /**
+   * 这块地的地面是**刷出来的泥土**（`paint` 通道大面积、高强度），还是**铺装**。
+   *
+   * 关系到下面那条覆盖率的门槛：堆场（`carYard`）的场地本来就是泥地，
+   * 铺装只占 8%，剩下的是刷出来的土层 —— 拿"铺装必须填满"去要求它，等于要求
+   * 一个泥土停车场铺上沥青。判定口径和 `bridge/placemaker.ts` 的
+   * `groundMatFromPaint()` 一致：单块 ≥ 地块 20% 且强度 ≥ 0.8。
+   */
+  const dirtGround = (plan.paint ?? []).some((q) => {
+    if (q.strength < 0.8) return false;
+    let t = 0;
+    for (let i = 0; i < q.ring.length; i++) { const a = q.ring[i], b = q.ring[(i + 1) % q.ring.length]; t += a[0] * b[1] - b[0] * a[1]; }
+    return Math.abs(t) / 2 >= meta.areaM2 * 0.2;
+  });
 
   // 复算烘焙时用的那一套坐标：地块环的最小角为原点，乘 UNIT_M。
   const model = new Model({ nPatches: meta.nPatches, seed: meta.citySeed, layout: meta.layout });
@@ -181,10 +197,13 @@ for (const meta of keepMetas) {
   ok(bad.length === 0, `${meta.generator}: 没有对象落在建筑里`, bad.slice(0, 4).map((o) => o.role).join(','));
 
   const covered = (paved + bld) / meta.areaM2;
+  // 铺装型（plaza / parking）：铺装 + 建筑要几乎填满地块。
+  // 泥土型（堆场）：铺装只占少数，地面是 paint 刷出来的泥土，门槛按"地确实被用起来了"给。
+  const lo = dirtGround ? 0.4 : 0.85;
   ok(
-    covered > 0.85 && covered < 1.02,
-    `${meta.generator}: 铺装 + 建筑几乎填满地块`,
-    `${(covered * 100).toFixed(0)}%（铺装 ${(paved / meta.areaM2 * 100).toFixed(0)}% + 建筑 ${(bld / meta.areaM2 * 100).toFixed(0)}%）`,
+    covered > lo && covered < 1.02,
+    `${meta.generator}: 铺装${dirtGround ? '（泥地场地，铺装只占少数）' : ''} + 建筑几乎填满地块`,
+    `${(covered * 100).toFixed(0)}%（铺装 ${(paved / meta.areaM2 * 100).toFixed(0)}% + 建筑 ${(bld / meta.areaM2 * 100).toFixed(0)}%，门槛 ${(lo * 100).toFixed(0)}%）`,
   );
 
   rows.push({ gen: `${meta.generator} (p${meta.patch})`, paved, bld, overlap: worst, inside: bad.length, objects: plan.objects.length });

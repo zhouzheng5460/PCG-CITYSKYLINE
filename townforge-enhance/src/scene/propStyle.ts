@@ -46,6 +46,11 @@ export const PROP_STYLE: Record<PropKind, PropStyle> = {
   shelter: { r: 0, mat: 'metal' },
   car: { r: 0, mat: 'wallPanel' },
   flagpole: { r: 0, mat: 'stonePave' },
+  // 堆场三件套：0.05 世界单位 ≈ 0.35 m 半径，在 12k m² 的地块图上约 2 px ——
+  // 画出来才能一眼看出"这块地上有几百件东西"，不给半径就成了看不见的实体。
+  crate: { r: 0.05, mat: 'metal' },
+  barrel: { r: 0.04, mat: 'metal' },
+  rock: { r: 0.06, mat: 'gravel' },
 };
 
 /** 树类道具（2D 里都画成圆点，统计里都算树）。 */

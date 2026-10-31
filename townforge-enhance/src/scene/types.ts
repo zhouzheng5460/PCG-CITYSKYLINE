@@ -49,7 +49,17 @@ export type PropKind =
   | 'bollard'
   | 'hedge'
   | 'car'
-  | 'flagpole';
+  | 'flagpole'
+  /**
+   * 集装箱/托盘/料箱：一个略扁的方盒。堆场里的"东西"绝大多数都是它——
+   * Placemaker 把这类杂物一律标成 `furniture`，靠资产分类（industrial.container /
+   * .pallet / .skip / .scrap…）区分，几何上一个盒子就够读出来。
+   */
+  | 'crate'
+  /** 油桶/轮胎堆：一个矮圆柱。 */
+  | 'barrel'
+  /** 石块/瓦砾堆：一个矮的多边形疙瘩，比 `crate` 更像自然堆料。 */
+  | 'rock';
 
 /** 点状道具：树、路灯、长椅…… 几何在 props.ts 里按 kind 生成，坐标只在这里存一份 */
 export interface PropFeature {

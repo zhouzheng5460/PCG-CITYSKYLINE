@@ -245,6 +245,12 @@ for (const { t, gen } of jobs) {
     unknownRoles?: { surfaces?: number; nets?: number; objects?: number; areas?: number };
   };
   const collected: AnyPlan[] = [];
+  /**
+   * 真正落过盘的临时文件路径。**不要**事后按 pieces 重新拼名字：
+   * 单块的时候文件名没有 `.whole` 后缀（见下面的 `suffix`），拼出来的是个不存在的路径，
+   * 读取就 ENOENT。踩过一次（--gens 烘焙单块地块时整批崩掉）。
+   */
+  const tmpWritten: string[] = [];
   let emitFailed = false;
 
   for (let pi = 0; pi < pieces.length; pi++) {
@@ -263,6 +269,7 @@ for (const { t, gen } of jobs) {
 
     const casePath = join(caseDir, `${name}${suffix}.json`);
     const planPath = join(dataDir, `${name}${suffix}.plan.tmp.json`);
+    tmpWritten.push(planPath);
     writeFileSync(casePath, JSON.stringify(caseJson, null, 1));
 
     try {
@@ -286,7 +293,7 @@ for (const { t, gen } of jobs) {
 
   // ── 写出：单块原样搬（字节级可比）/ 多块合并 / --clip 时先合并再按建筑裁
   const planPath = join(dataDir, `${name}.plan.json`);
-  const tmpPaths = pieces.map((pc) => join(dataDir, `${name}.${pc.tag}.plan.tmp.json`));
+  const tmpPaths = tmpWritten;
 
   const mergeAll = (): AnyPlan => {
     if (collected.length === 1) return collected[0];

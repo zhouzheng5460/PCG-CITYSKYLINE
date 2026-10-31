@@ -541,6 +541,11 @@ namespace Placemaker.Driver
                 if (Math.Abs(o.Elevation) > 1e-4) { Raw(",\"elevation\":"); Num2(Math.Round(o.Elevation, 3)); }
                 if (Math.Abs(o.Roll) > 1e-4) { Raw(",\"roll\":"); Num2(Math.Round(o.Roll, 3)); }
                 if (Math.Abs(o.Pitch) > 1e-4) { Raw(",\"pitch\":"); Num2(Math.Round(o.Pitch, 3)); }
+                // 资产分类（AssetCategories）。**必须带上**：`Furniture` 是通用角色，700 多个堆场杂物
+                // 和公园里的一张野餐桌都是它，不靠分类区分的话消费方只能一律画成同一种道具。
+                // 贴花同理：球场白线（decal.fieldline）、半场贴花（decal.markings）、
+                // 随手撒的落叶（decal.leaves）长得一样，几何差一个量级。
+                if (!string.IsNullOrEmpty(o.Category)) { Raw(",\"category\":"); Str2(o.Category); }
                 Raw("}");
             }
             Raw("]"); Raw(",");
