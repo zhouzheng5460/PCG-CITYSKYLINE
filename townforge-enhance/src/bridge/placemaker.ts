@@ -145,7 +145,7 @@ export interface PlacemakerPlan {
   regions: PlanRegion[];
   zoning: PlanZoning[];
   paint: PlanPaint[];
-  terraform: { kind: string; target: number; permanent: boolean; ring: PlanPoint[] }[];
+  terraform: { kind: string; target: number; permanent: boolean; ring: PlanPoint[]; hs?: number[] }[];
   stats: { key: string; value: number; unit?: string }[];
   facts: Record<string, number>;
   issues: PlanIssue[];
@@ -335,8 +335,15 @@ export interface BridgeOptions {
   hedges?: boolean;
   /** 是否画 net（通道、园路、围栏），默认 true。 */
   nets?: boolean;
-  /** 是否画 terraform 抬起的台地（先只做平铺圈，不做高度）。默认 true。 */
+  /** 是否画 terraform 抬起的台地（按顶点高度出成有体积的台体）。默认 true。 */
   terraform?: boolean;
+  /**
+   * 多矮的台地直接丢掉（米），默认 0.15。
+   *
+   * 堆场里一片料堆的羽化格子从 0.2 m 起，低于 0.15 m 的格子抬起来看不见，
+   * 白占三角形。设 0 就是一块不丢。
+   */
+  minMoundHeight?: number;
   /** 最多画多少条车位分隔线（护栏，防止一个巨型停车场把面数打爆）。默认 4000。 */
   maxBayLines?: number;
   /**
@@ -374,6 +381,14 @@ export interface BridgeResult {
   surfaces: SurfaceFeature[];
   props: PropFeature[];
   paths: PathFeature[];
+  /**
+   * 抬起来的台地 / 料堆（`terraform` 里的 raise 环）。
+   *
+   * 为什么不是 `surfaces`：这些环**逐顶点带高度**，是一块有体积的台体，
+   * 不是一片贴地的面。以前当面无脑平铺，255 个环按 0.2 mm 步长往上叠 ——
+   * 那是一片互相穿插的悬空薄板，深度缓冲上是必然的 z-fighting。
+   */
+  mounds: MoundFeature[];
   /** 被丢弃的面（自交、退化、点数不足）。非 0 说明 Plan 几何有问题，值得看一眼。 */
   dropped: number;
   /** 车位重塑的统计，给控制台/测试断言用。 */
@@ -383,8 +398,23 @@ export interface BridgeResult {
    * `strips` 白线条数、`frames` 整场贴花外框个数、`skipped` 非标线贴花（落叶/裂纹/水渍）个数。
    */
   markings: { strips: number; frames: number; skipped: number };
+  /**
+   * 台地的统计：
+   * `raised` 出成台体的环数、`lowered` 落成水面的下挖环数、
+   * `skipped` 太矮（< 0.15 m，看不见）或几何退化的环数、`maxH` 最高台地（米）。
+   */
+  terrain: { raised: number; lowered: number; skipped: number; maxH: number };
   /** 本次桥接用到的生成器 id 与种子，便于复现。 */
   meta: { generator: string; seed: number; area: number; ready: boolean };
+}
+
+/** 一块抬起来的台地：`ring` 与 `hs` 一一对应，`hs` 是顶面每个顶点的高度（世界单位）。 */
+export interface MoundFeature {
+  name: string;
+  group: string;
+  ring: Pt[];
+  hs: number[];
+  mat: MatKey;
 }
 
 // ─────────────────────────────────────────────────────────── 主函数
@@ -457,6 +487,37 @@ function polyArea(ring: PlanPoint[]): number {
   return s / 2;
 }
 
+/**
+ * 顶点高度只在**顶点之间真有高差**时才用，否则整块按 `target` 抬平。
+ *
+ * 实测（这一条踩过）：堆场/废料场的 terraform 环顶点高度**全是 0**，高度在
+ * `target` 里 —— 那是"这个格子整体抬到 h"，`Ring[i].y` 根本没被填。只有
+ * AiTerrain 的羽化路径才会写非零顶点高度。
+ *
+ * 所以判据是**顶点之间的极差**，不是"和 target 差多少"：拿后者去判，全零的环
+ * 会被当成"坡度 0 m、target 2.6 m"的斜坡，画出来高度是 0 —— 料堆原地消失。
+ */
+function slopedHs(hs: number[] | undefined, target: number): number[] | undefined {
+  if (!hs || hs.length === 0) return undefined;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const h of hs) {
+    if (h < lo) lo = h;
+    if (h > hi) hi = h;
+  }
+  return hi - lo > 0.05 ? hs : undefined;
+}
+
+/** 射线法：点是否在环内（与 `clip.ts` 的 `inside` 同源，这里收 `Pt`）。 */
+function pointInRing(p: Pt, ring: Pt[]): boolean {
+  let hit = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[i], b = ring[j];
+    if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) hit = !hit;
+  }
+  return hit;
+}
+
 export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeResult {
   const sc = opts.scale ?? 1;
   const g = opts.group ?? 'pm';
@@ -467,6 +528,8 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
   const surfaces: SurfaceFeature[] = [];
   const props: PropFeature[] = [];
   const paths: PathFeature[] = [];
+  const mounds: MoundFeature[] = [];
+  const terrain = { raised: 0, lowered: 0, skipped: 0, maxH: 0 };
   let dropped = 0;
   /** plan.objects 里出现、但映射表不认识的 role → 个数。收完在结尾统一报一次。 */
   const unknownObjRoles = new Map<string, number>();
@@ -489,6 +552,48 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     if (out.length < 3) return null;
     if (!simpleRing(out)) return null;
     return toCCW(out);
+  };
+
+  /**
+   * 带顶点高度的环。`ringOf` 会去重合点、必要时反转绕序，`hs` 必须**跟着做同样的操作**。
+   * 一旦错位，顶点高度就落到别的角上 —— 一块 4 m 见方的料堆会拧成麻花。
+   * 高度单位沿用调用方给的口径（米），换算在外面做。
+   */
+  const ringOfH = (
+    pts: PlanPoint[] | undefined,
+    hs: number[] | undefined,
+    fallback: number,
+  ): { ring: Pt[]; hs: number[] } | null => {
+    if (!pts || pts.length < 3) return null;
+    const pick = (i: number): number => {
+      const v = hs?.[i];
+      if (Number.isFinite(v)) return v as number;
+      const v0 = hs?.[0];
+      return Number.isFinite(v0) ? (v0 as number) : fallback;
+    };
+    const ring: Pt[] = [];
+    const hh: number[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const q = toPt(pts[i]);
+      const last = ring[ring.length - 1];
+      if (last && Math.abs(last.x - q.x) < 1e-6 && Math.abs(last.y - q.y) < 1e-6) continue;
+      ring.push(q);
+      hh.push(pick(i));
+    }
+    if (ring.length >= 3) {
+      const f = ring[0], l = ring[ring.length - 1];
+      if (Math.abs(f.x - l.x) < 1e-6 && Math.abs(f.y - l.y) < 1e-6) { ring.pop(); hh.pop(); }
+    }
+    if (ring.length < 3) return null;
+    let s = 0;
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      s += a.x * b.y - b.x * a.y;
+    }
+    // toCCW 会反转；这里不能用它，否则 hs 留在原地、高度错位
+    if (s < 0) { ring.reverse(); hh.reverse(); }
+    // 料堆的环常带共线点（网格切出来的），simpleRing 会拒；只挡自交，共线交给 earcut
+    return { ring, hs: hh };
   };
 
   // 0) 草地底：铺在最下面一层，比所有铺装低一档。
@@ -549,22 +654,93 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     });
   }
 
-  // 2) terraform 抬台：只把轮廓铺一层深色，不做高度（TownForge 的地面是平的，
-  //    真要抬起来得改 mesh 生成，那是另一件事）
+  // 2) terraform：抬起来的台地/料堆 + 挖下去的水面
+  //
+  // 这条通道以前整类当"贴地薄板"处理：每个环铺一层土色面，按数组序号抬 0.2 mm。
+  // 三个后果，最后一个是致命的：
+  //   1. 2.6 m 高的垃圾堆和 0.3 m 高的格子长得一模一样（都只是一块平地）；
+  //   2. 堆在地面上的 65 块薄板只差 0.2 mm —— 深度缓冲上是必然的 z-fighting 条纹；
+  //   3. 摆在这些堆上的箱子/油桶仍站在 y≈0，堆一抬高就全埋进土里。
+  //
+  // 现在的口径：`raise` 出成**有体积的台体**（顶面逐顶点高度 + 裙边落回地面），
+  // `lower` 只补一层水面（TownForge 的地面是一整块平面，没有"挖坑"这回事 ——
+  // 减出来的高度只能靠水面表达，园池的水本来也在 `surfaces.water` 里）。
   if (opts.terraform !== false) {
+    const minHm = opts.minMoundHeight ?? 0.15;
+    // 有真水面（`surfaces.water`）的生成器不用再补那层下挖水面：它压在
+    // 水面**之下**，永远是块看不见的几何。园池就是这种（水面已经铺好）。
+    const hasWater = plan.surfaces.some((s) => s.role === 'water');
     plan.terraform.forEach((t, i) => {
       if (t.kind === 'level') return;
-      const ring = ringOf(t.ring);
-      if (!ring) { dropped++; return; }
-      surfaces.push({
-        name: `${g}_terr_${i}`,
-        group: `${g}/terraform`,
-        ring,
-        mat: t.kind === 'lower' ? 'water' : 'soil',
-        y: SURFACE_Y0 + (plan.surfaces.length + plan.zoning.length + i) * SURFACE_DY,
+      if (t.kind === 'lower') {
+        const ring = ringOf(t.ring);
+        if (!ring) { dropped++; terrain.skipped++; return; }
+        if (hasWater) return;
+        surfaces.push({
+          name: `${g}_pond_${i}`,
+          group: `${g}/terraform/lower`,
+          ring,
+          mat: 'water',
+          // 水面比铺装低一档：它是一块被挖出来的水面，不该压在人行铺装之上。
+          y: SURFACE_Y0 - SURFACE_DY * 2,
+        });
+        terrain.lowered++;
+        return;
+      }
+      const m = ringOfH(t.ring, slopedHs(t.hs, t.target), t.target);
+      if (!m) { dropped++; terrain.skipped++; return; }
+      const hsW = m.hs.map((h) => h * k);
+      const maxH = Math.max(...hsW);
+      const maxHm = maxH / k;   // 换回米，只用于门槛判断和统计
+      if (maxHm < minHm) { terrain.skipped++; return; }
+      mounds.push({
+        name: `${g}_mound_${i}`,
+        group: `${g}/terraform/raise`,
+        ring: m.ring,
+        hs: hsW,
+        mat: 'soil',
       });
+      terrain.raised++;
+      if (maxHm > terrain.maxH) terrain.maxH = maxHm;
     });
   }
+
+  // 台地高度查询：摆在料堆上的箱子/油桶要跟着抬，否则堆一抬高它们就埋进土里。
+  // Core 只在少数对象上给了 `y`（大部分没有），所以这里自己按环查。
+  const moundBoxes = mounds.map((m) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const v of m.ring) {
+      if (v.x < x0) x0 = v.x;
+      if (v.y < y0) y0 = v.y;
+      if (v.x > x1) x1 = v.x;
+      if (v.y > y1) y1 = v.y;
+    }
+    let peak = 0;
+    for (const h of m.hs) if (h > peak) peak = h;
+    return { m, x0, y0, x1, y1, peak };
+  });
+  /**
+   * 道具脚下的台地高度：在**中心 + 半径 0.5 m 的四个点**上取最高的那格。
+   *
+   * 只查中心的话，一件压在格子边界上的东西会拿到低的那格，然后被邻居的
+   * 2 m 墙面从中间劈开；取最高只会让它略微悬空 —— 悬空看得见，劈开看不见。
+   */
+  const moundTopAt = (p: Pt, rad: number): number => {
+    let best = -Infinity;
+    const probes = rad > 0
+      ? [p, new Pt(p.x + rad, p.y), new Pt(p.x - rad, p.y), new Pt(p.x, p.y + rad), new Pt(p.x, p.y - rad)]
+      : [p];
+    for (const q of probes) {
+      for (const b of moundBoxes) {
+        if (q.x < b.x0 || q.x > b.x1 || q.y < b.y0 || q.y > b.y1) continue;
+        if (!pointInRing(q, b.m.ring)) continue;
+        // 取环的最高点而不是插值：宁可让道具在斜坡上微微悬空，
+        // 也绝不让它陷进堆里 —— 陷进去就是彻底看不见。
+        if (b.peak > best) best = b.peak;
+      }
+    }
+    return best === -Infinity ? 0 : best;
+  };
 
   // 3) 渠：贝塞尔 → 折线
   if (opts.nets !== false) {
@@ -634,6 +810,19 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
       if (treeSeen % coniferEvery === 0) kind = 'conifer';
     }
     const p = toPt([o.x, o.z]);
+    // 站在台地上的道具：底高跟着堆顶抬。
+    //
+    // 两个来源，取大的那个：
+    // - `o.y`：Core **自己给的**高度（`scrapyard` 194/509、`carYard` 96/809 带这个字段，
+    //   数值与 terraform 的 target 一一对得上，比如 2.6、4.0）。这是权威值。
+    // - `moundTopAt`：Core 没给的那些（占了多数），按台地环自己查。
+    //
+    // 取大：宁可略微悬空，也绝不让它埋进土里 —— 埋进去就是彻底看不见。
+    // `+0.002` 是为了不跟台体顶面共面（z-fighting）。
+    const authoredM = opts.terraform === false ? 0 : (o.y ?? 0);
+    const fromMoundM = moundTopAt(p, 0.5 * k) / k;
+    const baseM = Math.max(authoredM, fromMoundM);
+    const baseY = baseM > 0.005 ? baseM * k + 0.002 : 0;
     props.push({
       name: `${g}_obj_${i}_${o.role}`,
       group: `${g}/prop/${kind}`,
@@ -642,6 +831,7 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
       rot: yawToRot(o.yaw ?? 0),
       scale: o.scale ?? 1,
       seed: i,
+      ...(baseY > 1e-6 ? { baseY: baseY + 0.002 } : {}),
     });
   });
 
@@ -730,9 +920,11 @@ export function bridgePlan(plan: PlacemakerPlan, opts: BridgeOptions): BridgeRes
     surfaces,
     props,
     paths,
+    mounds,
     dropped,
     bays: { total: countBays(plan.objects), rows: bayRows.length, lines: Math.min(lines, cap) },
     markings,
+    terrain,
     meta: {
       generator: plan.generator,
       seed: plan.seed,

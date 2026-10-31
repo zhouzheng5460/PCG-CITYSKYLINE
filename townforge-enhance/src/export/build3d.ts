@@ -6,7 +6,7 @@ import type { Model } from '../town/model';
 import { buildScene, type SceneOptions } from '../scene/build';
 import { MAT } from '../scene/palette';
 import type { Primitive } from './mesh';
-import { flatPolygon, extrudeSolid, cylinder, wallSolid, mergePrimitives } from './mesh';
+import { flatPolygon, extrudeSolid, terraceSolid, cylinder, wallSolid, mergePrimitives } from './mesh';
 import { buildProp } from './props';
 import { bandBetween } from '../road/system';
 
@@ -38,6 +38,11 @@ export function buildTownMeshes(model: Model, opts: Build3DOptions = {}): Primit
 
   // 建筑与围墙体块
   for (const s of scene.solids) {
+    // 台地/料堆：顶面按顶点高度走，不能用统一高度挤出
+    if (s.kind === 'mound' && s.hs && s.hs.length === s.ring.length) {
+      out.push(...terraceSolid(s.ring, s.hs, s.y0, s.name, s.group, MAT[s.roofMat], MAT[s.wallMat], s.inset ?? 0));
+      continue;
+    }
     out.push(...extrudeSolid(s.ring, s.y0, s.h, s.name, s.group, MAT[s.roofMat], MAT[s.wallMat]));
   }
 
@@ -54,7 +59,8 @@ export function buildTownMeshes(model: Model, opts: Build3DOptions = {}): Primit
   }
 
   // 道具
-  for (const p of scene.props) for (const prim of buildProp(p, 0.022)) addFlat(prim);
+  // 站在台地上的道具自带 baseY（料堆顶面），其余落在默认地面
+  for (const p of scene.props) for (const prim of buildProp(p, p.baseY ?? 0.022)) addFlat(prim);
 
   for (const [key, list] of flats) {
     const group = list[0].group;

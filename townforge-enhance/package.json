@@ -23,7 +23,9 @@
     "test:clip": "tsx test/clip.test.ts",
     "score": "tsx tools/score-plan.ts",
     "test:yards": "tsx test/bridge-yards.test.ts",
-    "test:shops": "tsx test/bridge-shops.test.ts"
+    "test:shops": "tsx test/bridge-shops.test.ts",
+    "test:terrain": "tsx test/bridge-terrain.test.ts",
+    "zoom": "tsx tools/zoom-pm.ts"
   },
   "dependencies": {
     "earcut": "^3.2.4",

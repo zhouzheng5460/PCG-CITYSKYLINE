@@ -43,7 +43,8 @@ interface PlanJson {
   surfaces: { role: string; ring: [number, number][] }[];
   nets: { role: string; a: [number, number]; b: [number, number]; c: [number, number]; d: [number, number] }[];
   objects: { role: string }[];
-  terraform: { kind: string; ring: [number, number][] }[];
+  /** 台地：`raise` 出成有体积的台体、`lower` 补水面。以前整类当贴地薄板。 */
+  terraform: { kind: string; target?: number; ring: [number, number][] }[];
   /** 宗地：留给建筑的地，不铺装。不单列的话，商铺类生成器的"覆盖率 30%"会被误读成规划失败。 */
   zoning: { zoneId: string; quad: [number, number][] }[];
   unknownRoles?: { surfaces?: number; nets?: number; objects?: number; areas?: number };
@@ -77,6 +78,10 @@ interface Row {
   density: number;
   netLen: number;
   bld: number;
+  /** 抬起来的台地环数。非 0 才有"地形"，否则地面是平的。 */
+  mounds: number;
+  /** 最高台地（米）。 */
+  maxH: number;
   unknown: number;
   topRoles: string;
 }
@@ -117,6 +122,8 @@ for (const meta of metas) {
   const u = plan.unknownRoles;
   const unknown = (u?.surfaces ?? 0) + (u?.nets ?? 0) + (u?.objects ?? 0) + (u?.areas ?? 0);
   const lot = meta.areaM2 || plan.area || 1;
+  const raises = (plan.terraform ?? []).filter((t) => t.kind === 'raise');
+  const maxH = raises.reduce((m, t) => Math.max(m, t.target ?? 0), 0);
 
   rows.push({
     name: meta.name,
@@ -130,6 +137,8 @@ for (const meta of metas) {
     density: plan.objects.length / (lot / 1000),
     netLen,
     bld: meta.buildings ?? 0,
+    mounds: raises.length,
+    maxH,
     unknown,
     topRoles,
   });
@@ -141,7 +150,7 @@ rows.sort((a, b) => b.cover - a.cover || b.props - a.props);
 const pad = (s: string, n: number) => (s.length >= n ? s : ' '.repeat(n - s.length) + s);
 const padR = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length));
 
-const header = `${padR('方案', 30)} ${padR('gen', 18)} ${pad('地块', 8)} ${pad('铺装', 8)} ${pad('宗地', 8)} ${pad('覆盖', 6)} ${pad('层', 4)} ${pad('实体', 6)} ${pad('密度', 7)} ${pad('网线m', 8)} ${pad('楼', 3)}`;
+const header = `${padR('方案', 30)} ${padR('gen', 18)} ${pad('地块', 8)} ${pad('铺装', 8)} ${pad('宗地', 8)} ${pad('覆盖', 6)} ${pad('层', 4)} ${pad('实体', 6)} ${pad('密度', 7)} ${pad('网线m', 8)} ${pad('楼', 3)} ${pad('台地', 5)} ${pad('最高m', 6)}`;
 console.log(header);
 console.log('-'.repeat(header.length));
 
@@ -150,7 +159,8 @@ for (const r of rows) {
   console.log(
     `${padR(r.name, 30)} ${padR(r.gen, 18)} ${pad(r.lot.toFixed(0), 8)} ${pad(r.paved.toFixed(0), 8)} ${pad(r.zone.toFixed(0), 8)} ` +
     `${pad((r.cover * 100).toFixed(0) + '%', 6)} ${pad(r.layers.toFixed(2), 4)} ${pad(String(r.props), 6)} ${pad(r.density.toFixed(1), 7)} ` +
-    `${pad(r.netLen.toFixed(0), 8)} ${pad(String(r.bld), 3)}${flag}`,
+    `${pad(r.netLen.toFixed(0), 8)} ${pad(String(r.bld), 3)} ${pad(r.mounds ? String(r.mounds) : '-', 5)} ` +
+    `${pad(r.mounds ? r.maxH.toFixed(1) : '-', 6)}${flag}`,
   );
 }
 
@@ -164,10 +174,10 @@ if (rows.some((r) => r.unknown > 0)) {
 }
 
 if (csvPath) {
-  const lines = ['name,generator,lot_m2,paved_union_m2,zoning_union_m2,cover,surface_layers,props,density_per_1000m2,net_len_m,buildings,unknown_roles'];
+  const lines = ['name,generator,lot_m2,paved_union_m2,zoning_union_m2,cover,surface_layers,props,density_per_1000m2,net_len_m,buildings,mounds,max_mound_m,unknown_roles'];
   for (const r of rows) {
     lines.push([r.name, r.gen, r.lot.toFixed(0), r.paved.toFixed(1), r.zone.toFixed(1), r.cover.toFixed(4),
-      r.layers.toFixed(2), r.props, r.density.toFixed(2), r.netLen.toFixed(1), r.bld, r.unknown].join(','));
+      r.layers.toFixed(2), r.props, r.density.toFixed(2), r.netLen.toFixed(1), r.bld, r.mounds, r.maxH.toFixed(2), r.unknown].join(','));
   }
   writeFileSync(csvPath, lines.join('\n') + '\n');
   console.log(`CSV → ${csvPath}`);

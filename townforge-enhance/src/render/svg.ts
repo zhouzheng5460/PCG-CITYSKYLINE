@@ -126,9 +126,9 @@ function renderModernSVG(model: Model, opts: SvgOptions): string {
 
   // 建筑：屋顶填充 + 墙面描边
   for (const s of scene.solids) {
-    out.push(
-      `<polygon points="${pts(s.ring)}" fill="${css(s.roofMat)}" stroke="${css(s.wallMat)}" stroke-width="0.12" stroke-linejoin="miter"/>`
-    );
+    // 台地/料堆不描边：它们是成片铺开的料堆，一格格描出来像张棋盘格
+    const edge = s.kind === 'mound' ? '' : ` stroke="${css(s.wallMat)}" stroke-width="0.12" stroke-linejoin="miter"`;
+    out.push(`<polygon points="${pts(s.ring)}" fill="${css(s.roofMat)}"${edge}/>`);
   }
 
   // 道具：怎么画由 scene/propStyle.ts 的 `propDraw` 一处决定（两个 2D 渲染器 + 联系表共用）

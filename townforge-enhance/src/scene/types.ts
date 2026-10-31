@@ -15,7 +15,7 @@ export interface SurfaceFeature {
   y: number;
 }
 
-export type SolidKind = 'tower' | 'slab' | 'podium' | 'house' | 'warehouse' | 'canopy';
+export type SolidKind = 'tower' | 'slab' | 'podium' | 'house' | 'warehouse' | 'canopy' | 'mound';
 
 /** 体块：建筑、雨棚、围墙、树冠以外的实体 */
 export interface SolidFeature {
@@ -27,6 +27,16 @@ export interface SolidFeature {
   wallMat: MatKey;
   roofMat: MatKey;
   kind: SolidKind;
+  /**
+   * 顶面**逐顶点**高度（世界单位）。只给 `kind: 'mound'` 用。
+   *
+   * 有它的时候 `h` 只是一个统计用的最大值，几何完全按 `hs` 走：顶面是 `hs[i]`，
+   * 裙边从 `y0` 拉到各自的 `hs`。料堆/台地必须这样画 —— 它们是 Core 的
+   * `AiTerrain.Cells` 切出来的缓坡格子，一块 4×4 m 格子里四个角的高度本来就不一样。
+   */
+  hs?: number[];
+  /** 收顶（世界单位）：顶面朝形心缩进这么多，侧面因此带坡。只给 `mound` 用。 */
+  inset?: number;
 }
 
 export type PropKind =
@@ -94,6 +104,13 @@ export interface PropFeature {
    * 给了就不再乘 `scale`（调用方已经把长度算好了），2D/3D 两侧共用这一个值。
    */
   len?: number;
+  /**
+   * 落地的底高（世界单位）。不给就是地面（`0.022`）。
+   *
+   * 只在**站在台地上**时用：`terraform` 抬起来的料堆上摆着箱子/油桶，
+   * 底面不跟着抬就会陷进土里 —— 这正是以前"抬不抬地形"两难的原因。
+   */
+  baseY?: number;
 }
 
 /** 线性要素：内部道路、建筑入口路、园路、围栏 */

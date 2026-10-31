@@ -138,6 +138,125 @@ export function extrudeSolid(
   return out;
 }
 
+/**
+ * 台地 / 料堆：顶面**逐顶点**给高度，裙边各自落到 `y0`。
+ *
+ * 为什么不能用 `extrudeSolid`（统一高度）：
+ * Core 的 `AiTerrain.Cells` 把 AI 地块切成"核心环 + 约 4 m 的羽化格子"，
+ * **每个顶点带自己的高度**，靠这点高度差做出缓坡。统一高度画出来的是一块
+ * 平顶石墩，一片料堆就成了 65 个台阶 —— 或者更糟，退回以前那种贴地薄板。
+ *
+ * `hs` 与 `ring` 必须同步清洗（去重合点、统一绕序）：两者一旦错位，
+ * 顶点高度就落到别的角上，一块方形料堆会拧成麻花。
+ */
+export function terraceSolid(
+  ring: Pt[],
+  hs: number[],
+  y0: number,
+  name: string,
+  group: string,
+  topColor: [number, number, number],
+  wallColor: [number, number, number],
+  /**
+   * 收顶（世界单位）：顶面每个顶点朝形心缩进这么多，侧面因此带一点坡。
+   *
+   * 为什么要收：Core 的台地是 4 m 见方的格子，而一辆废车长 4.8 m。顶面不收、
+   * 侧面垂直，车就悬在崖边上，看着像穿模；收了顶以后坡从地面爬上来接住它。
+   * 收多少由调用方按高度算（见 `src/scene/build.ts`），默认 0 = 直上直下。
+   */
+  inset = 0
+): Primitive[] {
+  if (ring.length < 3) return [];
+  const pick = (i: number) => (Number.isFinite(hs[i]) ? hs[i] : (Number.isFinite(hs[0]) ? hs[0] : y0));
+
+  // 去重合点（含首尾闭合的那一对），hs 跟着一起走
+  const R0: Pt[] = [];
+  const H0: number[] = [];
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i];
+    const last = R0[R0.length - 1];
+    if (last && Math.abs(last.x - p.x) < 1e-6 && Math.abs(last.y - p.y) < 1e-6) continue;
+    R0.push(p);
+    H0.push(pick(i));
+  }
+  while (R0.length > 1) {
+    const f = R0[0];
+    const l = R0[R0.length - 1];
+    if (Math.abs(f.x - l.x) < 1e-6 && Math.abs(f.y - l.y) < 1e-6) { R0.pop(); H0.pop(); } else break;
+  }
+  if (R0.length < 3) return [];
+
+  let s = 0;
+  for (let i = 0; i < R0.length; i++) {
+    const a = R0[i];
+    const b = R0[(i + 1) % R0.length];
+    s += a.x * b.y - b.x * a.y;
+  }
+  const R = s < 0 ? R0.slice().reverse() : R0;
+  const H = s < 0 ? H0.slice().reverse() : H0;
+
+  const top = triangulate(R);
+  if (top.length === 0) return [];
+
+  // 收顶：每个顶点朝形心挪 inset，最多挪到自身距形心的 40%（防止高瘦形状缩成一点）
+  let T = R;
+  if (inset > 1e-6) {
+    let cx = 0;
+    let cy = 0;
+    for (const q of R) {
+      cx += q.x;
+      cy += q.y;
+    }
+    cx /= R.length;
+    cy /= R.length;
+    T = R.map((q) => {
+      const dx = cx - q.x;
+      const dy = cy - q.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 1e-9) return q;
+      const m = Math.min(inset, d * 0.4) / d;
+      return new Pt(q.x + dx * m, q.y + dy * m);
+    });
+  }
+
+  const topPos: number[] = [];
+  const topNrm: number[] = [];
+  for (let i = 0; i < R.length; i++) {
+    topPos.push(T[i].x, H[i], T[i].y);
+    topNrm.push(0, 1, 0);
+  }
+  const out: Primitive[] = [
+    { name: `${name}_cap`, group, positions: topPos, normals: topNrm, indices: top, color: topColor },
+  ];
+
+  const n = R.length;
+  const pos: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = R[i];
+    const b = R[(i + 1) % n];
+    const ha = H[i];
+    const hb = H[(i + 1) % n];
+    // 两端都在地下的边不用画墙
+    if (ha <= y0 + 1e-6 && hb <= y0 + 1e-6) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-9) continue;
+    const nx = dy / len;
+    const ny = -dx / len;
+    const ta = T[i];
+    const tb = T[(i + 1) % n];
+    const base = pos.length / 3;
+    pos.push(a.x, y0, a.y, b.x, y0, b.y, tb.x, hb, tb.y, ta.x, ha, ta.y);
+    for (let k2 = 0; k2 < 4; k2++) normals.push(nx, 0, ny);
+    indices.push(base, base + 2, base + 1, base, base + 3, base + 2);
+  }
+  if (indices.length > 0) out.push({ name: `${name}_wall`, group, positions: pos, normals, indices, color: wallColor });
+  return out;
+}
+
 /** 圆柱（灯杆、树干、水塔） */
 export function cylinder(
   c: Pt,

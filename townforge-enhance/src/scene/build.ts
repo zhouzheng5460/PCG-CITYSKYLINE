@@ -165,6 +165,25 @@ export function buildScene(model: Model, opts: SceneOptions = {}): Scene {
     scene.surfaces.push(...r.surfaces);
     scene.paths.push(...r.paths);
     scene.props.push(...r.props);
+    // 台地/料堆是体块（顶面逐顶点高度），不是面 —— 走 solids 才不会跟铺装争同一个 y
+    for (const m of r.mounds) {
+      let peak = 0;
+      for (const h of m.hs) if (h > peak) peak = h;
+      scene.solids.push({
+        name: m.name,
+        group: m.group,
+        ring: m.ring,
+        y0: 0,
+        h: peak,
+        wallMat: m.mat,
+        roofMat: m.mat,
+        kind: 'mound',
+        hs: m.hs,
+        // 收顶 = 高度的 45%：4 m 的格子上就是不到 1.2 m 的坡，够把悬在崖边的
+        // 废车接住，又不至于把一格 16 m² 削成锥子
+        inset: peak * 0.45,
+      });
+    }
     scene.lots.push({
       index: l.patchIndex ?? -1,
       use: useOfGenerator(l.plan.generator),

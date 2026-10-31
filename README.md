@@ -68,6 +68,7 @@ npx tsx tools/inspect-pm.ts pitch      # 单块地 3D 预览
 | 自检 | 38 条全绿 |
 | 生成器覆盖 | 130 个 `[AreaGenerator]` 反射全跑，**128 个有输出**，0 抛异常 0 超时 |
 | 配方 | 82 个（13 嵌套用例 + 69 官方配方）全部渲染成功 |
+| 台地 / 料堆 | `carYard` 65 格最高 2.6 m、`scrapyard` 52 格最高 4.0 m；76 / 138 件道具跟着抬到堆顶（长 4.8 m 的废车横跨两格时，底高取较高那格，宁可略微悬空也不被墙面劈开） |
 | 生成器接入总数 | **31 个**（parking 1 + 绿地/花园 19 + 堆场/球场 5 + 铺装/商业 6）；`plaza` / `parking` / `park` 另有 3 个保留建筑的 `--keep` 组合 |
 | 堆场 / 球场一族 | 5 个生成器出方案：`carYard` 809 件道具、`junkYard` 717、`scrapyard` 509、`runningTrack` 651（其中 642 条白线）、`pitch` 360（340 条白线） |
 | 铺装 / 商业一族 | 6 个生成器出方案：`marketSquare` 356 件道具、`mallPark` 300、`stripMall` 265、`abandonedLot` 258、`outdoorMall` 162、`shopsPark` 113；`stripMall` 铺装 30% + 宗地 27% |
@@ -79,7 +80,7 @@ npx tsx tools/inspect-pm.ts pitch      # 单块地 3D 预览
 这些是踩出来的，写下来省得重踩：
 
 1. **Placemaker 不产建筑。** `ObjectRole` 里根本没有 Building。它是纯室外场地设计器，建筑只以「障碍物四边形」的形式出现，用来避让。
-2. **七通道只消费五个半。** Placemaker 的方案有 `surfaces / nets / objects / areas / regions / zoning / paint / terraform`，桥接用 `surfaces / nets / objects / zoning / terraform`，外加 `paint` 的**底色**（见第 11 条）；`regions`、`areas` 仍然丢，`terraform` 也只画轮廓不抬高度。`zoning` 是**留给建筑的宗地**（见第 13 条），丢了会让商铺类生成器看起来像规划失败。
+2. **七通道只消费五个半。** Placemaker 的方案有 `surfaces / nets / objects / areas / regions / zoning / paint / terraform`，桥接用 `surfaces / nets / objects / zoning / terraform`，外加 `paint` 的**底色**（见第 11 条）；`regions`、`areas` 仍然丢，`terraform` 现在出成**有体积的台体**（见第 15 条）。`zoning` 是**留给建筑的宗地**（见第 13 条），丢了会让商铺类生成器看起来像规划失败。
 3. **`polish*` 是表面精修层。** 它只改已有地面的材质贴花，给它裸地就输出 0 个元素——而且返回 `ready=yes`，很容易误判成「可用」。
 4. **绿地生成器不铺地面。** `park / greenwayPark / picnicGrounds / natureReserve` 的 surfaces 为空（在 CS2 里地面就是地形）。所以要单独补草地底，否则场景是空的。
 5. **`gen.Plan()` 绕过 `Composer`。** 正常管线里 `SiteSafety.Apply` 由 `Composer.Compose` 调用，直接调 `Plan()` 就不会跑——障碍物会被收下但没人用。驱动器里手动补了一次。
@@ -92,6 +93,7 @@ npx tsx tools/inspect-pm.ts pitch      # 单块地 3D 预览
 12. **`bake-plan.ts` 的临时文件不要事后拼名字。** 单块地时文件名没有 `.whole` 后缀，`--gens` 批量烘焙会拿到不存在的路径直接 ENOENT。现在按实际落盘的路径记录。
 13. **`zoning` 是「留给建筑的地」，不是可以丢的通道。** 它有 `zoneId`（`EU Commercial Low`）和一块四边形，标的是「这里将来长一栋楼」。`stripMall` 铺装只占 30%，剩下 27% 就是它——不画的话那块地是一片没来由的草坪。现在铺一层砾石（`pm/zoning/<zoneId>` 分组），读作「场地平整过、等着盖」。
 14. **商场和市场族不自己找门。** 源码原话：the player places them on the outline, nothing is suggested and Build waits for a way in for cars。没有门就整块 `ready=no`、一个面都不出（`stripMall` / `mallPark` / `marketSquare` 全中）。烘焙工具只能在**被拒绝时**替它放一个：最长临街边中点、kind `entrance`（双向车行门，商场族和市场族都认）。**不能无条件塞门**——公园族的 `entrance` 是步行门，塞了会改掉已有 25 份方案的布局。
+15. **`terraform` 的顶点高度是 0，高度在 `target` 里。** 这条通道表达的是「这块地抬到 h」，`Ring[i].y` 根本没被填（只有 `AiTerrain` 的羽化路径会写非零顶点高度）。所以判据必须是**顶点之间的极差**，不是「顶点和 target 差多少」——拿后者去判，一块 2.6 m 的料堆会被当成「0 m 的坡」，画出来高度是 0，料堆原地消失。另外：`raise` 要出成**有体积的台体**（顶面 + 起坡裙边 + 收顶），不是贴地薄板——255 个环按 0.2 mm 步长往上叠，深度缓冲上必然 z-fighting；`lower` 只补一层水面（地面是整块平面，没有「挖坑」这回事），而被抬起来的格子上摆着的道具必须跟着抬（`PropFeature.baseY`），否则全埋进土里。
 
 ## 许可
 

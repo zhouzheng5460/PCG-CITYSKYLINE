@@ -616,6 +616,19 @@ namespace Placemaker.Driver
                 Raw("{\"kind\":"); Str2(t.Kind.ToString().ToLowerInvariant());
                 Raw(",\"target\":"); Num2(double.IsNaN(t.TargetHeight) ? 0 : Math.Round(t.TargetHeight, 3));
                 Raw(",\"permanent\":"); Raw(t.Permanent ? "true" : "false");
+                // 顶点高度：Ring() 走 Vec3，只写 x/z，而 terraform 的**缓坡只在顶点高度里**。
+                // 不补这一项，一块 2.6 m 高的料堆和一块 0.3 m 高的格子长得完全一样 ——
+                // 都只是"一个四边形"，消费方只能拿 target 当平地画。
+                if (t.Ring != null && t.Ring.Length > 0)
+                {
+                    Raw(",\"hs\":[");
+                    for (int j = 0; j < t.Ring.Length; j++)
+                    {
+                        if (j > 0) Raw(",");
+                        Num2(Math.Round(float.IsNaN(t.Ring[j].y) ? 0f : t.Ring[j].y, 2));
+                    }
+                    Raw("]");
+                }
                 Raw(",\"ring\":"); Ring(t.Ring); Raw("}");
             }
             Raw("]"); Raw(",");

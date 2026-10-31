@@ -9,7 +9,7 @@
   "given": 0,
   "auto": 1
  },
- "elapsedMs": 13.0986,
+ "elapsedMs": 13.3227,
  "settings": {
   "style": "salvage",
   "fill": 85,
@@ -13468,6 +13468,12 @@
    "kind": "raise",
    "target": 0.437,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      40,
@@ -13491,6 +13497,12 @@
    "kind": "raise",
    "target": 0.246,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      44,
@@ -13514,6 +13526,12 @@
    "kind": "raise",
    "target": 0.216,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      36,
@@ -13537,6 +13555,12 @@
    "kind": "raise",
    "target": 1.604,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      40,
@@ -13560,6 +13584,12 @@
    "kind": "raise",
    "target": 1.391,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      44,
@@ -13583,6 +13613,12 @@
    "kind": "raise",
    "target": 0.921,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -13606,6 +13642,12 @@
    "kind": "raise",
    "target": 0.797,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      40,
@@ -13629,6 +13671,12 @@
    "kind": "raise",
    "target": 0.56,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      44,
@@ -13652,6 +13700,12 @@
    "kind": "raise",
    "target": 0.262,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -13675,6 +13729,12 @@
    "kind": "raise",
    "target": 1.786,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -13698,6 +13758,12 @@
    "kind": "raise",
    "target": 0.273,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      76,
@@ -13721,6 +13787,12 @@
    "kind": "raise",
    "target": 1.046,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      80,
@@ -13744,6 +13816,12 @@
    "kind": "raise",
    "target": 0.65,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      84,
@@ -13767,6 +13845,12 @@
    "kind": "raise",
    "target": 0.96,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -13790,6 +13874,12 @@
    "kind": "raise",
    "target": 1.8,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -13813,6 +13903,12 @@
    "kind": "raise",
    "target": 1.069,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      76,
@@ -13836,6 +13932,12 @@
    "kind": "raise",
    "target": 2.093,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      80,
@@ -13859,6 +13961,12 @@
    "kind": "raise",
    "target": 1.966,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      84,
@@ -13882,6 +13990,12 @@
    "kind": "raise",
    "target": 0.281,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      88,
@@ -13905,6 +14019,12 @@
    "kind": "raise",
    "target": 1.721,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -13928,6 +14048,12 @@
    "kind": "raise",
    "target": 1.8,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -13951,6 +14077,12 @@
    "kind": "raise",
    "target": 0.564,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      76,
@@ -13974,6 +14106,12 @@
    "kind": "raise",
    "target": 1.76,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      80,
@@ -13997,6 +14135,12 @@
    "kind": "raise",
    "target": 1.407,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      84,
@@ -14020,6 +14164,12 @@
    "kind": "raise",
    "target": 1.804,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -14043,6 +14193,12 @@
    "kind": "raise",
    "target": 1.363,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -14066,6 +14222,12 @@
    "kind": "raise",
    "target": 1.866,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -14089,6 +14251,12 @@
    "kind": "raise",
    "target": 0.393,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      32,
@@ -14112,6 +14280,12 @@
    "kind": "raise",
    "target": 1.686,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -14135,6 +14309,12 @@
    "kind": "raise",
    "target": 0.664,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      28,
@@ -14158,6 +14338,12 @@
    "kind": "raise",
    "target": 1.232,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      80,
@@ -14181,6 +14367,12 @@
    "kind": "raise",
    "target": 0.613,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      84,
@@ -14204,6 +14396,12 @@
    "kind": "raise",
    "target": 1.193,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      80,
@@ -14227,6 +14425,12 @@
    "kind": "raise",
    "target": 0.528,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      84,
@@ -14250,6 +14454,12 @@
    "kind": "raise",
    "target": 0.488,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      60,
@@ -14273,6 +14483,12 @@
    "kind": "raise",
    "target": 1.43,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      64,
@@ -14296,6 +14512,12 @@
    "kind": "raise",
    "target": 1.63,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      68,
@@ -14319,6 +14541,12 @@
    "kind": "raise",
    "target": 0.91,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      72,
@@ -14342,6 +14570,12 @@
    "kind": "raise",
    "target": 1.385,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      60,
@@ -14365,6 +14599,12 @@
    "kind": "raise",
    "target": 2.535,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      64,
@@ -14388,6 +14628,12 @@
    "kind": "raise",
    "target": 2.6,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      68,
@@ -14411,6 +14657,12 @@
    "kind": "raise",
    "target": 1.997,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      72,
@@ -14434,6 +14686,12 @@
    "kind": "raise",
    "target": 0.427,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      76,
@@ -14457,6 +14715,12 @@
    "kind": "raise",
    "target": 1.536,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      60,
@@ -14480,6 +14744,12 @@
    "kind": "raise",
    "target": 2.598,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      64,
@@ -14503,6 +14773,12 @@
    "kind": "raise",
    "target": 2.6,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      68,
@@ -14526,6 +14802,12 @@
    "kind": "raise",
    "target": 2.156,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      72,
@@ -14549,6 +14831,12 @@
    "kind": "raise",
    "target": 0.49,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      76,
@@ -14572,6 +14860,12 @@
    "kind": "raise",
    "target": 0.801,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      60,
@@ -14595,6 +14889,12 @@
    "kind": "raise",
    "target": 1.9,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      64,
@@ -14618,6 +14918,12 @@
    "kind": "raise",
    "target": 2.109,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      68,
@@ -14641,6 +14947,12 @@
    "kind": "raise",
    "target": 1.314,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      72,
@@ -14664,6 +14976,12 @@
    "kind": "raise",
    "target": 0.394,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      64,
@@ -14687,6 +15005,12 @@
    "kind": "raise",
    "target": 0.508,
    "permanent": true,
+   "hs": [
+    0,
+    0,
+    0,
+    0
+   ],
    "ring": [
     [
      68,
