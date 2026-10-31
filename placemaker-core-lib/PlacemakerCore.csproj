@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    把 Placemaker 的 Core/ 抽成独立 .NET 类库（路线 B）。
+    - Core 只依赖 System.* + Unity.Mathematics（已核实：0 处 UnityEngine/Entities/Burst/NativeArray/unsafe）。
+    - 因此这里自带一份 Unity.Mathematics 兼容层（Compatibility/UnityMathematics.cs），不引用 Unity/游戏程序集。
+    - 用 glob 直接编译原始 Core 源码，不复制文件；改 Core 后这里即时生效。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <!-- Core 是 Unity/Mono 时代的代码；用 latest 换取最大语法宽容度（SDK 6 上等价 C# 10） -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AssemblyName>PlacemakerCore</AssemblyName>
+    <RootNamespace>Placemaker</RootNamespace>
+    <!--
+      Core 是游戏模组源码，难免有未用字段、过时 API、可空注解告警。
+      PoC 阶段不因告警中断；这些都不影响生成的程序集。
+    -->
+    <NoWarn>CS0612;CS0618;CS0169;CS0649;CS0414;CS1998;CS0162;CS0108;CS0114;CS0219;CS0168;CS0660;CS0661;CS8632;CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\placemaker-master\placemaker-master\Core\**\*.cs" LinkBase="Core" />
+    <Compile Include="Compatibility\UnityMathematics.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+{
+  "generator": "parking",
+  "seed": 1234,
+  "shape": { "ring": [[0, 0], [150, 0], [150, 100], [0, 100]] },
+  "streets": [
+    { "id": 9001, "a": [-20, -8], "b": [170, -8], "width": 8, "sidewalk": true, "speed": 50 }
+  ]
+}

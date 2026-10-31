@@ -1,0 +1,30 @@
+# 构建产物
+bin/
+obj/
+dist/
+out/
+*.tsbuildinfo
+
+# 依赖
+node_modules/
+
+# 临时脚本与日志
+tmp/
+*.log
+
+# 第三方上游副本（体积大，按许可单独获取，见 README）
+placemaker-master/
+placemaker-master.zip
+townforge/
+tg/
+tg.zip
+TownGeneratorOS-master/
+
+# 会话工作目录
+.workbuddy/
+
+# 编辑器 / 系统
+.vs/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+# 默认按文本处理，仓库内统一 LF（Windows 上由 autocrlf 决定检出形式）
+* text=auto eol=lf
+
+# 批处理必须是 CRLF，否则 cmd 解析可能出错
+*.bat text eol=crlf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.glb binary
+*.gltf binary
+*.zip binary

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    最小自检程序：验证「抽出来的 Core 库不仅编译通过，而且数学层行为正确」。
+    不引入测试框架（省掉 NuGet 依赖），失败即非零退出码。
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>PlacemakerSelfTest</AssemblyName>
+    <RootNamespace>Placemaker.SelfTest</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlacemakerCore.csproj" />
+  </ItemGroup>
+
+</Project>
