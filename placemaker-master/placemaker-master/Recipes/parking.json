@@ -1,0 +1,22 @@
+{
+  "id": "parking",
+  "nameKey": "Placemaker.Recipe.Parking",
+  "icon": "Media/Game/Icons/Parking.svg",
+  "formatVersion": 1,
+  "root": {
+    "layer": "parking",
+    "settings": {
+      "stallAngle": "90",
+      "greenery": "medians",
+      "perimeterRoad": true,
+      "crossEvery": 9,
+      "lanterns": true,
+      "evShare": 4,
+      "accessibleShare": 2,
+      "fee": 10
+    },
+    "target": "",
+    "children": [],
+    "regionOverrides": {}
+  }
+}

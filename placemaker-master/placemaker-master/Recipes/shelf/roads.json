@@ -1,0 +1,13 @@
+{
+  "_about": "Make-row category 'Roads' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id. Roads: leave alone (docs/refactor/GRADES.md).",
+  "id": "roads",
+  "name": "Roads",
+  "order": 1,
+  "hidden": false,
+  "groups": [
+    "roads"
+  ],
+  "types": [],
+  "hiddenTypes": [],
+  "hiddenStyles": {}
+}

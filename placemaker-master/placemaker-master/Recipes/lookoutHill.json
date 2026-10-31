@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "lookoutHill",
+  "nameKey": "Placemaker.Recipe.LookoutHill",
+  "descriptionKey": "Placemaker.Recipe.LookoutHill.Description",
+  "icon": "Media/Game/Icons/TerrainHeight.svg",
+  "root": {
+    "layer": "lookoutHill",
+    "settings": {}
+  }
+}

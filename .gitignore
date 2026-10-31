@@ -13,12 +13,24 @@ tmp/
 *.log
 
 # 第三方上游副本（体积大，按许可单独获取，见 README）
-placemaker-master/
+# 但 Placemaker 的 Core/ Recipes/ 是编译与配方必需，用白名单内置（见下方 negate 规则）
 placemaker-master.zip
 townforge/
 tg/
 tg.zip
 TownGeneratorOS-master/
+
+# ---- Placemaker 上游：只内置 Core + Recipes + 许可证 ----
+# 其余（UI 70M / Lang 9M / docs 9M / Tests / Game 等）不参与本工程，不入库
+/placemaker-master/**
+!/placemaker-master/placemaker-master/
+/placemaker-master/placemaker-master/**
+!/placemaker-master/placemaker-master/Core/
+!/placemaker-master/placemaker-master/Core/**
+!/placemaker-master/placemaker-master/Recipes/
+!/placemaker-master/placemaker-master/Recipes/**
+!/placemaker-master/placemaker-master/LICENSE
+!/placemaker-master/placemaker-master/README.md
 
 # 会话工作目录
 .workbuddy/

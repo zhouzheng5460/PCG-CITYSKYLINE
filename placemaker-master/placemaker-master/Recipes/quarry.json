@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "quarry",
+  "nameKey": "Placemaker.Recipe.Quarry",
+  "descriptionKey": "Placemaker.Recipe.Quarry.Description",
+  "icon": "Media/Game/Icons/MiningExcavator.svg",
+  "root": {
+    "layer": "quarry",
+    "settings": {}
+  }
+}

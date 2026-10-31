@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "campground",
+  "nameKey": "Placemaker.Recipe.Campground",
+  "descriptionKey": "Placemaker.Recipe.Campground.Description",
+  "icon": "Media/Game/Icons/Forest.svg",
+  "root": {
+    "layer": "campground",
+    "settings": { "pitchSize": 10, "treeDensity": 60 }
+  }
+}

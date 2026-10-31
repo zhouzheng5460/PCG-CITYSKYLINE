@@ -1,0 +1,13 @@
+{
+  "_about": "Make-row category 'Transport' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id. The whole category is hidden from the Make row.",
+  "id": "transport",
+  "name": "Transport",
+  "order": 91,
+  "hidden": true,
+  "groups": [
+    "transport"
+  ],
+  "types": [],
+  "hiddenTypes": [],
+  "hiddenStyles": {}
+}

@@ -1,0 +1,21 @@
+{
+  "_about": "Make-row category 'Sports' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id.",
+  "id": "sports",
+  "name": "Sports",
+  "order": 8,
+  "hidden": false,
+  "groups": [
+    "sports"
+  ],
+  "types": [],
+  "hiddenTypes": [],
+  "hiddenStyles": {
+    "sportsPark": [
+      "campus"
+    ],
+    "urbanRuins": [
+      "graffitiPark"
+    ]
+  },
+  "_why": "rf-sports (2026-10-16, docs/refactor/sports.md): the user graded Sports D, weird but unique; cut only what is bad AND not unique. sportsPark campus = community plus a baseball diamond that never fits a city block (5 facilities missing on 1.5 ha). urbanRuins graffitiPark = the DIY spot with a wall row; its point (graffiti) needs decal packs, without them a bare white slab. Round 2 (2026-10-29, docs/refactor/sports.md): five designed grounds shown (sportsPark arena, centreCourt, hillside, cageCourts, athletics); nothing new hidden."
+}

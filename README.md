@@ -14,37 +14,34 @@
 | --- | --- | --- |
 | `placemaker-core-lib/` | 从 CS2 版 Placemaker 抽出的内核库 + 自检 + 驱动器（场景 / 全量扫描 / 配方） | C# / .NET 6 |
 | `townforge-enhance/` | TS 版城市生成器：现代城市内容层、禁建区、路宽可编辑、GLB 导出、Placemaker 桥接 | TypeScript |
+| `placemaker-master/` | Placemaker 上游的 `Core/`（465 个 .cs）+ `Recipes/`（83 个配方），编译所需的源码，**已内置** | C# |
 
-两者都自带 README，细节看各自的。
+前两个子工程各带一份 README，细节看各自的。
 
 ## 前置条件
 
 - .NET SDK 6.0+
 - Node.js 18+
-- **Placemaker 上游源码**：`placemaker-core-lib` 用相对路径直接编译 `..\placemaker-master\placemaker-master\Core\**\*.cs`，**不复制文件**（改上游即时生效，不会出现两份代码漂移）。所以需要先放好上游：
 
-  ```
-  PCG-CitySkyline/
-  ├─ placemaker-core-lib/
-  ├─ townforge-enhance/
-  └─ placemaker-master/          ← 需自行获取，GPL-3.0
-     └─ placemaker-master/Core/
-  ```
+**没有第二步**。上游源码已经随仓库分发：`placemaker-master/placemaker-master/Core/` 与 `Recipes/`，clone 下来就能编译、能跑配方。UI / Lang / docs / Tests 等与本工程无关的部分（100M+）没有带。
 
-  上游不在本仓库内（体积与许可原因）。来源是 Placemaker 的公开仓库 release 源码包。
+`placemaker-core-lib` 的 csproj 用 glob 直接编译上面那份 Core，**不复制文件**——改 Core 即时生效，不会出现两份代码漂移。
 
 ## 跑起来
 
 ```bash
+git clone git@github.com:zhouzheng5460/PCG-CITYSKYLINE.git
+cd PCG-CITYSKYLINE
+
 # 1) 内核库：编译 + 自检 + 7 个路网场景 + 130 个生成器扫描 + 82 个配方
 cd placemaker-core-lib
-./build.bat                      # Windows；产物在 out/，日志 build.log
+./build.bat -y                   # -y = 跑完不停；双击运行则省略，会在结尾等你看结果
+                                 # 产物在 out/，日志 build.log，全绿会打印 ALL GREEN
 
 # 2) 城市生成器
 cd ../townforge-enhance
-npm install
+npm ci                           # 按 package-lock 精确装依赖
 npm run dev                      # 本地编辑器 (vite)
-npm run bake                     # 烘焙 Placemaker 方案 → src/bridge/data/
 npm run test:bridge              # 桥接
 npm run test:hedge               # 绿篱拟合
 npm run test:bridge-green        # 绿地一族（20 份方案）
@@ -81,7 +78,7 @@ npm run test:bridge-glb          # GLB 导出
 
 两个上游都是 **GPL-3.0**，本仓库的两个子工程都是它们的派生作品，因此整体同样以 GPL-3.0 分发：
 
-- `placemaker-core-lib` — 派生自 Placemaker（Cities: Skylines II 场地设计器），GPL-3.0
-- `townforge-enhance` — 派生自 TownGeneratorOS（watabou/TownGeneratorOS），GPL-3.0
+- `placemaker-core-lib` — 派生自 Placemaker（Cities: Skylines II 场地设计器），GPL-3.0。其 `Core/` 与 `Recipes/` 原样内置在 `placemaker-master/`，许可证见该目录下的 `LICENSE`。
+- `townforge-enhance` — 派生自 TownGeneratorOS（[watabou/TownGeneratorOS](https://github.com/watabou/TownGeneratorOS)），GPL-3.0。
 
-上游的 LICENSE 与版权声明归各自作者。若要再分发，请保留同样的许可与来源说明。
+上游的 LICENSE 与版权声明归各自作者（Placemaker 只通过 [Paradox Mods](https://mods.paradoxplaza.com/mods/163638/Windows) 发布）。本仓库内置上游源码仅为满足 GPL-3.0 的源码可得性要求，不做任何修改。若要再分发，请保留同样的许可与来源说明。

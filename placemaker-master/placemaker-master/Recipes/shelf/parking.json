@@ -1,0 +1,18 @@
+{
+  "_about": "Make-row category 'Parking' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id.",
+  "id": "parking",
+  "name": "Parking",
+  "order": 2,
+  "hidden": false,
+  "groups": [
+    "parking"
+  ],
+  "types": [],
+  "hiddenTypes": [],
+  "hiddenStyles": {
+    "parking": [
+      "green"
+    ]
+  },
+  "_why": "rf-parking (docs/refactor/parking.md): green is standard with wider medians and denser planting, a near-duplicate now that every style plants its medians in tidy lines; the planting density slider gives the same look."
+}

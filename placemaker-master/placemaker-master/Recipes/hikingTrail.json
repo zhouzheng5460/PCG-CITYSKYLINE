@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "hikingTrail",
+  "nameKey": "Placemaker.Recipe.HikingTrail",
+  "descriptionKey": "Placemaker.Recipe.HikingTrail.Description",
+  "icon": "Media/Game/Icons/Pathways.svg",
+  "root": {
+    "layer": "hikingTrail",
+    "settings": {}
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "greenwayPark",
+  "nameKey": "Placemaker.Recipe.GreenwayPark",
+  "descriptionKey": "Placemaker.Recipe.GreenwayPark.Description",
+  "icon": "Media/Game/Icons/PedestrianPathWithBikeLanes.svg",
+  "root": {
+    "layer": "greenwayPark",
+    "settings": {}
+  }
+}

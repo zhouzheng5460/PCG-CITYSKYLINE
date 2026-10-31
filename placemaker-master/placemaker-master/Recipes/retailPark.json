@@ -1,0 +1,11 @@
+{
+  "formatVersion": 1,
+  "id": "retailPark",
+  "nameKey": "Placemaker.Recipe.RetailPark",
+  "descriptionKey": "Placemaker.Recipe.RetailPark.Description",
+  "icon": "Media/Game/Icons/ZoneCommercial.svg",
+  "root": {
+    "layer": "retailPark",
+    "settings": {}
+  }
+}

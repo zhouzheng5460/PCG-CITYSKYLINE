@@ -1,0 +1,55 @@
+{
+  "_about": "Make-row category 'Parks' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id. Gardens fold into Parks. rf-parks (2026-10-16): cut to the best of the best, see docs/refactor/parks.md; picnic grounds fold into Park as the 'picnic' style. rf-shops2: the amphitheatre (Amphitheatre, Bandstand lawn) moves in from Shops & squares (the user: they belong in parks).",
+  "id": "parks",
+  "name": "Parks",
+  "order": 3,
+  "hidden": false,
+  "groups": [
+    "parks",
+    "gardens"
+  ],
+  "types": [
+    "amphitheatre"
+  ],
+  "hiddenTypes": [
+    "dogPark",
+    "picnicGrounds",
+    "cemeteryGrounds",
+    "orchardPark",
+    "formalGarden",
+    "communityGarden"
+  ],
+  "hiddenStyles": {
+    "park": [
+      "formal",
+      "woodland",
+      "meadow",
+      "pocket",
+      "victorian",
+      "landscape",
+      "modern",
+      "wildflower",
+      "riverside",
+      "greenway"
+    ],
+    "botanicalGarden": [
+      "mixed",
+      "arboretum"
+    ],
+    "memorialPark": [
+      "square"
+    ],
+    "adventurePlayground": [
+      "water"
+    ],
+    "zenGarden": [
+      "moss",
+      "bamboo"
+    ],
+    "amphitheatre": [
+      "cinema",
+      "meadow",
+      "speakers"
+    ]
+  }
+}

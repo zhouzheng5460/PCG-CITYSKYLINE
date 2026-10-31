@@ -1,0 +1,22 @@
+{
+  "_about": "Make-row category 'Farms' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id.",
+  "id": "farms",
+  "name": "Farms",
+  "order": 7,
+  "hidden": false,
+  "groups": [
+    "farms"
+  ],
+  "types": [],
+  "hiddenTypes": [
+    "urbanFarm"
+  ],
+  "hiddenStyles": {
+    "animalPark": [
+      "aviaryGarden"
+    ],
+    "farmstead": [
+      "hobby"
+    ]
+  }
+}

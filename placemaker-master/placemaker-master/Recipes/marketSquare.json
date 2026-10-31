@@ -1,0 +1,12 @@
+{
+  "formatVersion": 1,
+  "id": "marketSquare",
+  "order": 4,
+  "nameKey": "Placemaker.Recipe.MarketSquare",
+  "descriptionKey": "Placemaker.Recipe.MarketSquare.Description",
+  "icon": "Media/Game/Icons/PropsCommercial.svg",
+  "root": {
+    "layer": "marketSquare",
+    "settings": {}
+  }
+}

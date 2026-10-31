@@ -1,0 +1,23 @@
+{
+  "_about": "Make-row category 'Beach' (Core/Tool/Shelf.cs; one file per category). Hide, never delete: type ids in hiddenTypes, style (preset) ids per type in hiddenStyles ({\"park\": [\"pocket\"]}), types moved in from another group in types. Hidden things keep their code and the game runner still builds them by id. Beach is its own category: the beach and waterfront types of the water group (folded into Parks before). rf-beach: three styles per type kept (docs/refactor/beach.md); the others hidden.",
+  "id": "beach",
+  "name": "Beach",
+  "order": 4,
+  "hidden": false,
+  "groups": [
+    "water"
+  ],
+  "types": [],
+  "hiddenTypes": [],
+  "hiddenStyles": {
+    "beach": [
+      "rocky",
+      "river",
+      "volleyball"
+    ],
+    "waterfront": [
+      "riverSteps",
+      "fishing"
+    ]
+  }
+}

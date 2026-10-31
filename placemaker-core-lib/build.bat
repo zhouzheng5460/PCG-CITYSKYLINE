@@ -7,6 +7,9 @@ set DOTNET_CLI_TELEMETRY_OPTOUT=1
 set DOTNET_NOLOGO=1
 set DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
+rem 双击运行时停在结尾等你看结果；带 -y 参数（或从 CI/脚本调用）则不暂停
+if "%~1"=="-y" set "NOPAUSE=1"
+
 echo ============================================================
 echo  PlacemakerCore  -  Route B proof of concept
 echo  compiling 465 Core files against the local math shim
@@ -18,7 +21,7 @@ if errorlevel 1 (
   echo [FATAL] "dotnet" not found on PATH.
   echo         Requires .NET SDK 6.0 or newer.
   echo.
-  pause
+  if not defined NOPAUSE pause
   exit /b 2
 )
 
@@ -51,7 +54,7 @@ echo   svg:  "%CD%\out\plan-*.svg"  "%CD%\out\sweep\*.svg"  "%CD%\out\recipes\*.
 echo   index: "%CD%\out\sweep.md"  "%CD%\out\recipes.md"
 echo ============================================================
 echo.
-pause
+if not defined NOPAUSE pause
 exit /b 0
 
 :failed
@@ -64,5 +67,5 @@ echo ============================================================
 type build.log | findstr /C:"error " /C:"FAIL" /C:"Unhandled" /C:"Exception:"
 echo.
 echo ============================================================
-pause
+if not defined NOPAUSE pause
 exit /b 1
